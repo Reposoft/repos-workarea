@@ -28,23 +28,20 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 public class WorkAreaResource {
 
 	// global services
-	private ReposCurrentUser reposCurrentUser;
 	private WorkAreaConfiguration workAreaConfiguration;
 	
 	// per repository services
 	private Map<CmsRepository, CmsItemLookup> itemRead;
 	// out of scope for first iteration //@Inject private Map<CmsRepository, CmsLocking> itemCommit;
 	// out of scope for first iteration //@Inject private Map<CmsRepository, CmsCommit> itemCommit;
-	
-	@Inject public void setReposCurrentUser(ReposCurrentUser reposCurrentUser) {
-		this.reposCurrentUser = reposCurrentUser;
-	}
 
-	@Inject public void setWorkAreaConfiguration(WorkAreaConfiguration workAreaConfiguration) {
+	@Inject
+	public void setWorkAreaConfiguration(WorkAreaConfiguration workAreaConfiguration) {
 		this.workAreaConfiguration = workAreaConfiguration;
 	}
 
-	@Inject public void setItemRead(Map<CmsRepository, CmsItemLookup> itemRead) {
+	@Inject
+	public void setItemRead(Map<CmsRepository, CmsItemLookup> itemRead) {
 		this.itemRead = itemRead;
 	}
 	
@@ -70,7 +67,6 @@ public class WorkAreaResource {
 			@PathParam("repo") String repositoryId,
 			@QueryParam("target") List<CmsItemPath> targets) {
 		CmsRepository repo = getRepository(repositoryId);
-		String username = reposCurrentUser.getUsername();
 		
 		// CmsItemLookup expects items
 		List<CmsItemId> items = new LinkedList<CmsItemId>();

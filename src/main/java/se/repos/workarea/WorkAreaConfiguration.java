@@ -9,10 +9,8 @@ package se.repos.workarea;
 public interface WorkAreaConfiguration {
 
 	/**
-	 * Retrieves configured impl for a specific user.
-	 * @param username Login name
-	 * @return This user's work area
+	 * @return work area implementation, typically different class and instance per user
 	 */
-	WorkArea getWorkArea(String username);
+	WorkArea getWorkArea();
 	
 }
