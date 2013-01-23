@@ -3,6 +3,15 @@
  */
 package se.repos.workarea;
 
-public interface WorkArea {
+import java.util.*;
 
+public interface WorkArea{
+
+	void uploadFile(String folderName, List<String> pathList);
+	
+	List getFileList();
+
+	List<String> updatedFileCheck();
+
+	void commitFiles(List<String> files);
 }
