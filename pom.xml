@@ -56,6 +56,11 @@
 			<version>0.8</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.syncloud</groupId>
+			<artifactId>dropbox-client</artifactId>
+			<version>1.5.3</version>
+		</dependency>	
 		<!-- JAX-RS impl needed in classpath to be able to unit test REST methods -->
 		<dependency>
 			<groupId>org.apache.wink</groupId>

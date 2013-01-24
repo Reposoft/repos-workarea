@@ -6,6 +6,7 @@ package se.repos.workarea;
 import javax.inject.Inject;
 
 import se.repos.authproxy.ReposCurrentUser;
+import se.repos.workarea.dropbox.WorkAreaDropBox;
 
 public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 
@@ -15,7 +16,7 @@ public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 	@Inject public void setReposCurrentUser(ReposCurrentUser reposCurrentUser) {
 		this.reposCurrentUser = reposCurrentUser;
 		this.workareaCurrent = new WorkAreaDropBox();
-	}	
+	}
 	
 	@Override
 	public WorkArea getWorkArea() {
