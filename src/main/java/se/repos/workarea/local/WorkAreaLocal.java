@@ -6,11 +6,15 @@ package se.repos.workarea.local;
 import se.repos.workarea.WorkArea;
 
 import java.util.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Date;
 
@@ -48,6 +52,28 @@ public class WorkAreaLocal implements WorkArea {
 				writeToFile(source,target);
 				long lDateTime = new Date().getTime();
 				source.setLastModified(lDateTime);
+				
+				int index = source.getName().lastIndexOf('.');
+				if(index >= 0){
+					String fileName = source.getName().substring(0, index);
+					File reposFolder = new File(tempRepository);
+					if(reposFolder.exists() && reposFolder.isDirectory()){
+						File lockFile = new File(reposFolder,fileName +".lock");
+						try {
+							lockFile.createNewFile();
+							if(lockFile.exists()){
+								String content = localFolder+folderName+"/"+source.getName();
+								FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
+								BufferedWriter bw = new BufferedWriter(fw);
+								bw.write(content);
+								bw.close();
+							}
+						} catch (IOException e) {
+							logger.info("Something went wrong while writing to lock file");
+						}
+					}
+				}
+				
     		}
 		}
 
@@ -56,12 +82,16 @@ public class WorkAreaLocal implements WorkArea {
 		*
 		*@return List Names of files in repository
 		*/
-		public List getFileList(){
+		public List<String> getFileList(){
 			File localDirectory = new File(tempRepository);
 			String[] fileList = localDirectory.list();
-			if(fileList == null)
-				throw new NullPointerException("Null Value");
-		return Arrays.asList(fileList);
+			List<String> repositoryFiles = new LinkedList<String>();
+			for(String file : Arrays.asList(fileList)){
+				int index = file.lastIndexOf('.');
+				if(index >= 0 && !file.substring(index+1).equals("lock"))
+					repositoryFiles.add(file);
+			}
+			return repositoryFiles;
 		}
 
 
@@ -80,7 +110,7 @@ public class WorkAreaLocal implements WorkArea {
 							File reposFile = new File(tempRepository + localFile.getName());
 							if(localFile.lastModified() > reposFile.lastModified())
 								fileUpdated.add(localFile.getName());
-						}
+						}	
 					}
 			}
 			return fileUpdated;
@@ -95,28 +125,35 @@ public class WorkAreaLocal implements WorkArea {
 		*/
 		public void commitFiles(List<String> files){
 			for(String fileName : files){
-				File file;
-				File root = new File(localFolder);
-				search : for(File subFolder : Arrays.asList(root.listFiles())){
-					File[] listFiles = subFolder.listFiles();
-					if(listFiles != null){
-						for(File localFile : Arrays.asList(listFiles)){
-							if(localFile.getName().equals(fileName)){
-								file = new File(localFolder+subFolder.getName() +"/" + fileName);
-								File reposFile = new File(tempRepository+fileName);
-								if(reposFile.exists()){
-									writeToFile(file,reposFile);
-									file.delete();
-									if(subFolder.list().length == 0)
-										subFolder.delete();
-								}
-									break search;
-							}
+				int index = fileName.lastIndexOf('.');
+				if(index>=0){
+					String fileN = fileName.substring(0, index);
+					File reposFolder = new File(tempRepository);
+					File lockFile = new File(reposFolder,fileN + ".lock");
+					String localPath = "";
+					if(lockFile.exists());{
+						try{
+							FileInputStream in = new FileInputStream(lockFile);
+							BufferedReader br = new BufferedReader(new InputStreamReader(in));
+							localPath = br.readLine();
+							br.close();
+						}catch(Exception e){
+							logger.info("Something went wrong while reading lock file");
 						}
+						File source = new File(localPath);
+						File target = new File(tempRepository + fileName);
+						if(source.exists() && target.exists()){
+							writeToFile(source,target);
+							source.delete();
+							File parentFolder = source.getParentFile();
+							if(parentFolder.list().length == 0)
+								parentFolder.delete();
+							lockFile.delete();
+						}
+								
 					}
 				}
 			}
-
 		}
 
 		/**
@@ -148,6 +185,5 @@ public class WorkAreaLocal implements WorkArea {
 				}
 			}
 		}
-
 
 }
