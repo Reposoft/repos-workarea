@@ -11,32 +11,27 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.NullPointerException;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.Date;
 import java.io.FileOutputStream;
-import java.text.SimpleDateFormat;
-
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
 
 import com.dropbox.client2.exception.DropboxException; 
-import com.dropbox.client2.exception.DropboxServerException;
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.Entry;
-import com.dropbox.client2.DropboxAPI.DropboxInputStream;
 import com.dropbox.client2.DropboxAPI.DropboxFileInfo;
 import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
-import com.dropbox.client2.session.Session;
 import com.dropbox.client2.session.WebAuthSession;	
 import com.dropbox.client2.session.RequestTokenPair;
-import com.dropbox.client2.session.*;
 
 
 public class WorkAreaDropBox implements WorkArea{
@@ -57,17 +52,7 @@ public class WorkAreaDropBox implements WorkArea{
 
 
 	public WorkAreaDropBox(){
-		// Initialize the session
-		this.appKeys = new AppKeyPair(KEY, SECRET);
-		WebAuthSession session = new WebAuthSession(appKeys, ACCESS_TYPE);
-		// Initialize DropboxAPI object
-		this.api = new DropboxAPI<WebAuthSession>(session);
-		try{
-			acceptUrl = api.getSession().getAuthInfo().url;
-		}catch (DropboxException e) {
-			logger.info("Could not retrieve AuthInfo from session");
-		}
-
+		initializeDropbox();
 		//Repository set to local temp folder
 		this.tempRepository = "tmp/repos-test/";
 	}
@@ -87,8 +72,10 @@ public class WorkAreaDropBox implements WorkArea{
 			while((strLine = br.readLine())!= null){
 				list.add(strLine);
 			}
+			br.close();
 		}catch(Exception e){
 			logger.info("Something went wrong while trying to read TOKENS file");
+			logger.info("Stacktrace: " + e);
 		}
 		String AUTH_KEY = list.get(0);
 		String AUTH_SECRET = list.get(1);
@@ -103,6 +90,9 @@ public class WorkAreaDropBox implements WorkArea{
 					api.accountInfo().quota + ")");
 		} catch (DropboxException e) {
 			logger.info("Could not retrieve account info");
+			logger.info("Stacktrace: " + e);
+			acceptedUrl = false;
+			initializeDropbox();
 		}
 	}
 
@@ -119,6 +109,7 @@ public class WorkAreaDropBox implements WorkArea{
 			api.getSession().retrieveWebAccessToken(tokens);
 		} catch (DropboxException e) {
 			logger.info("Could not retrieve WebAccessTokens");
+			logger.info("Stacktrace: " + e);
 		}
 		// Write tokens to file
 		try {
@@ -128,6 +119,7 @@ public class WorkAreaDropBox implements WorkArea{
 			tokenWriter.close();
 		} catch (Exception e) {
 			logger.info("Something went wrong while writing tokens to file");
+			logger.info("Stacktrace: " + e);
 		}
 
 	}
@@ -161,21 +153,44 @@ public class WorkAreaDropBox implements WorkArea{
 		authenticate();
 		for(String path : pathList){
 			try{
-				File file = new File(path);
-				FileInputStream fis = new FileInputStream(file);
+				File source = new File(path);
+				FileInputStream fis = new FileInputStream(source);
 				ByteArrayOutputStream bos = new ByteArrayOutputStream();
 				byte [] buf = new byte[1024];
-				int times = 1;
 				for(int readNum; (readNum = fis.read(buf)) != -1;) {
 			    	bos.write(buf, 0, readNum);
 				}
+				fis.close();
 				ByteArrayInputStream inputStream2 = new ByteArrayInputStream(bos.toByteArray());
 				//Upload file to dropbox folder: folderName, if folderName don't exist it is created
-				Entry newEntry  = api.putFile(folderName+ "/" +file.getName(), inputStream2,bos.size(), null, null);
+				api.putFile(folderName+ "/" +source.getName(), inputStream2,bos.size(), null, null);
 				long lDateTime = new Date().getTime();
-				file.setLastModified(lDateTime);
+				source.setLastModified(lDateTime);
+				
+		
+				int index = source.getName().lastIndexOf('.');
+				if(index >= 0){
+					String fileName = source.getName().substring(0, index);
+					File reposFolder = new File(tempRepository);
+					if(reposFolder.exists() && reposFolder.isDirectory()){
+						File lockFile = new File(reposFolder,fileName +".lock");
+						try {
+							lockFile.createNewFile();
+							if(lockFile.exists()){
+								String content = folderName+"/"+source.getName();
+								FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
+								BufferedWriter bw = new BufferedWriter(fw);
+								bw.write(content);
+								bw.close();
+							}
+						} catch (IOException e) {
+							logger.info("Something went wrong while writing to lock file");
+						}
+					}
+				}
             }catch (Exception e) {
 					logger.info("Somthing went wrong while uploading file to dropbox");
+	    			logger.info("Stacktrace: " + e);
 			}
 		}
 	}
@@ -185,12 +200,16 @@ public class WorkAreaDropBox implements WorkArea{
 	*Gets a list of files for a local repository (tmp/repos-test)
 	*@return List A list of the files in repository
 	*/
-	public List getFileList(){
+	public List<String> getFileList(){
 		File localDirectory = new File(tempRepository);
 		String[] fileList = localDirectory.list();
-		if(fileList == null)
-			throw new NullPointerException("Null Value");
-		return Arrays.asList(fileList);
+		List<String> repositoryFiles = new LinkedList<String>();
+		for(String file : Arrays.asList(fileList)){
+			int index = file.lastIndexOf('.');
+			if(index >= 0 && !file.substring(index+1).equals("lock"))
+				repositoryFiles.add(file);
+		}
+		return repositoryFiles;
 	}
 
 
@@ -207,7 +226,7 @@ public class WorkAreaDropBox implements WorkArea{
 		File tokensFile = new File("TOKENS"); 
 		if (!tokensFile.exists() && !acceptedUrl) {
 			acceptedUrl = true;
-			fileUpdated.add("URL");
+			fileUpdated.add("DropboxURLacceptance");
 			fileUpdated.add(acceptUrl);
 		}else{
 			//Authenticate to dropbox a account
@@ -235,6 +254,9 @@ public class WorkAreaDropBox implements WorkArea{
         		}
 			} catch (DropboxException e) {
     			logger.info("Something went wrong while getting metadata");
+    			logger.info("Stacktrace: " + e);
+    			acceptedUrl = false;
+    			initializeDropbox();
 			}
     	}
 		return fileUpdated;
@@ -251,33 +273,76 @@ public class WorkAreaDropBox implements WorkArea{
         FileOutputStream outputStream = null;
         for(String s : files){
 		try {
-			//File in repository which to store change in, is set to a local temp folder (tmp/repos-test/)
-    		File file = new File(tempRepository+s.substring(s.lastIndexOf("/") + 1));
-    		outputStream = new FileOutputStream(file);
-    		//Get file from dropbox 
-    		DropboxFileInfo info = api.getFile(s, null, outputStream, null);
-    		//Get entry for this dropbox file   
-    		Entry fileMetadata = info.getMetadata();
-    		//Delete file from dropbox     	
-    		api.delete(s);
-    		//Get entry for files parent folder
-    		Entry parentFolder = api.metadata(fileMetadata.parentPath(),0,null,true,null);
-    		//Checks if parent folder is empty, and delete folder if it is
-    		if(parentFolder.contents.isEmpty())
-    			api.delete(fileMetadata.parentPath());
+			String fileN = s.substring(s.lastIndexOf("/") + 1);
+			int index = fileN.lastIndexOf('.');
+			if(index>=0){
+				fileN = fileN.substring(0, index);
+				File reposFolder = new File(tempRepository);
+				File lockFile = new File(reposFolder,fileN + ".lock");
+				String dropboxPath = "";
+				if(lockFile.exists());{
+					FileInputStream in = new FileInputStream(lockFile);
+					BufferedReader br = new BufferedReader(new InputStreamReader(in));
+					dropboxPath = br.readLine();
+					br.close();
+					lockFile.delete();
+				}
+			
+				//File in repository which to store change in, is set to a local temp folder (tmp/repos-test/)
+				File file = new File(tempRepository + s.substring(s.lastIndexOf("/") + 1));
+				outputStream = new FileOutputStream(file);
+				//Get file from dropbox 
+				DropboxFileInfo info = api.getFile(dropboxPath, null, outputStream, null);
+				//Get entry for this dropbox file   
+				Entry fileMetadata = info.getMetadata();
+				//Delete file from dropbox     	
+				api.delete(s);
+				//Get entry for files parent folder
+				Entry parentFolder = api.metadata(fileMetadata.parentPath(),0,null,true,null);
+				//Checks if parent folder is empty, and delete folder if it is
+				if(parentFolder.contents.isEmpty())
+					api.delete(fileMetadata.parentPath());
+			}
 			} catch (DropboxException de) {
     			logger.info("Something went wrong while downloading");
+    			logger.info("Stacktrace: " + de);
+    			acceptedUrl = false;
+    			initializeDropbox();
 			} catch (FileNotFoundException fe) {
     			logger.info("File not found");
+    			logger.info("Stacktrace" + fe);
+			} catch (IOException e) {
+				logger.info("Problem reading .lock file");
+				e.printStackTrace();
 			} finally {
     		if (outputStream != null) {
         		try {
             		outputStream.close();
         		} catch (IOException IOe) {
         			logger.info("Something went wrong with outputstream");
+        			logger.info("Stacktrace: " + IOe);
         		}
     		}
 			}
+		}
+	}
+	
+	
+	private void initializeDropbox(){
+		// Initialize the session
+		this.appKeys = new AppKeyPair(KEY, SECRET);
+		WebAuthSession session = new WebAuthSession(appKeys, ACCESS_TYPE);
+		// Initialize DropboxAPI object
+		this.api = new DropboxAPI<WebAuthSession>(session);
+		try{
+			acceptUrl = api.getSession().getAuthInfo().url;
+		}catch (DropboxException e) {
+			logger.info("Could not retrieve AuthInfo from session");
+			logger.info("Stacktrace: " + e);
+		}		
+		File tokens = new File("TOKENS");
+		if(tokens.exists()){
+			tokens.delete();
 		}
 	}
 
