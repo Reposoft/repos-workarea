@@ -225,9 +225,14 @@ public class WorkAreaDropBox implements WorkArea{
 		//If not, add accept url to return list
 		File tokensFile = new File("TOKENS"); 
 		if (!tokensFile.exists() && !acceptedUrl) {
-			acceptedUrl = true;
-			fileUpdated.add("DropboxURLacceptance");
-			fileUpdated.add(acceptUrl);
+			authenticate();
+			try {
+				Entry tryEntry = api.metadata("/", 0, null, true, null);
+				acceptedUrl = true;
+			} catch (DropboxException e) {
+				logger.info("Problem accesing dropbox: " + e );
+				initializeDropbox();
+			}
 		}else{
 			//Authenticate to dropbox a account
 			authenticate();
@@ -345,5 +350,15 @@ public class WorkAreaDropBox implements WorkArea{
 			tokens.delete();
 		}
 	}
+	
+	public boolean getAccepted(){
+		return acceptedUrl;
+	}
+
+	
+	public String getAcceptUrl(){
+		return acceptUrl;
+	}
+
 
 }
