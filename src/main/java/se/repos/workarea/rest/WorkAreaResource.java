@@ -25,6 +25,7 @@ import javax.ws.rs.core.MediaType;
 import se.repos.authproxy.ReposCurrentUser;
 import se.repos.workarea.WorkAreaConfiguration;
 import se.repos.workarea.WorkArea;
+import se.repos.workarea.dropbox.*;
 import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
@@ -122,49 +123,19 @@ public class WorkAreaResource {
 	@Path("list")
 	@Produces(MediaType.TEXT_HTML)
 	public Response viewHTML() {	
-		List<String> fileList = workAreaConfiguration.getWorkArea().getFileList(); 
-		List<String> updated = workAreaConfiguration.getWorkArea().updatedFileCheck();
+		WorkArea workArea = workAreaConfiguration.getWorkArea();
+		List<String> updated = workArea.updatedFileCheck();
 		String files ="";
 		//Building the response which will show in the browser
 		//This is a check if one has accepted the applikation for dropbox, if not this will show link to accept url
-		if(!updated.isEmpty() && updated.get(0).equals("URL")){
-			files += "<p>Follow" + "<a href='" + updated.get(1)+ "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
-		}else{
-			//Setting up the list for files in repository
-			files = "<h1 id=div1>Files in repository</h1>\n";
-			files += "<select id='multipleSelect' size= "+fileList.size()  +"  multiple='multiple'>\n" ;
-			for(String s : fileList){	
-				files += "<option value =" + s + ">" + s + " </option> \n";  
-			}
-			files += "</select> \n";
-			//Setting up div with list for files that has been changed
-			files += "<div style='display: none;' id='commit' title='Commit files'>These files have been changed:";
-			files += "<ul>";
-			for(String path : updated){
-				files += "<li>" + path.substring(path.lastIndexOf("/") + 1) + "</li>";
-			}
-			files += "</ul>\n";
-			files += "Do you want to commit these files?</div>\n";
-			//Setting up div for files to check out to workarea with textarea for folder name
-			files += "<div style='display: none;' id='checkedOut' title='Checkout files'>\n";
-			files += "<label for='my-text'>Send files to Work Area.\n Keep or change this folder name:</label>\n";
-    		files += "<textarea id='my-text'></textarea></div>\n";
-			files += "<input id='checkout' type='button' value='Send to Work Area' />\n";
-			//Adding the required javascript and jquery files
-			files += "<link rel='stylesheet' href='http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css'> \n";
-			files += "<script type='text/javascript' src='http://code.jquery.com/jquery-1.8.3.js'></script> \n";
-			files += "<script type='text/javascript' src='http://code.jquery.com/ui/1.9.2/jquery-ui.js'></script> \n" ;
-			files += "<script type='text/javascript' src='/javascript/jquery-main.js'></script>";
-			//Setting up div for files to be commited
-			if(!updated.isEmpty()){
-				files += "<script type='text/javascript' src='/javascript/jquery-commit.js'></script>";
-				String commitList = "http://localhost:8088/repos/work/commit?comment=changed";
-				for(String s : updated){
-					commitList += "&&entry=" + s ;
-				}
-				files += "<div id='commitFiles' style='visibility: hidden'>" + commitList +"</div>";
+		if(workArea instanceof WorkAreaDropBox ){
+			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workArea;
+			if(!workAreaDropbox.getAccepted()){
+				files += "<p>Follow" + "<a href='" + workAreaDropbox.getAcceptUrl() + "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
+				return Response.ok(files, MediaType.TEXT_HTML).build();
 			}
 		}
+		files = buildResponse(workArea);
 		return Response.ok(files, MediaType.TEXT_HTML).build();
 	}
 
@@ -175,49 +146,19 @@ public class WorkAreaResource {
 	@Path("list")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response viewJSON(){
-		List<String> fileList = workAreaConfiguration.getWorkArea().getFileList(); 
-		List<String> updated = workAreaConfiguration.getWorkArea().updatedFileCheck();
+		WorkArea workArea = workAreaConfiguration.getWorkArea();
+		List<String> updated = workArea.updatedFileCheck();
 		String files ="";
 		//Building the response which will show in the browser
 		//This is a check if one has accepted the applikation for dropbox, if not this will show link to accept url
-		if(!updated.isEmpty() && updated.get(0).equals("URL")){
-			files += "<p>Follow" + "<a href='" + updated.get(1)+ "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
-		}else{
-			//Setting up the list for files in repository
-			files = "<h1 id=div1>Files in repository</h1>\n";
-			files += "<select id='multipleSelect' size= "+fileList.size()  +"  multiple='multiple'>\n" ;
-			for(String s : fileList){	
-				files += "<option value =" + s + ">" + s + " </option> \n";  
-			}
-			files += "</select> \n";
-			//Setting up div with list for files that has been changed
-			files += "<div style='display: none;' id='commit' title='Commit files'>These files have been changed:";
-			files += "<ul>";
-			for(String path : updated){
-				files += "<li>" + path.substring(path.lastIndexOf("/") + 1) + "</li>";
-			}
-			files += "</ul>\n";
-			files += "Do you want to commit these files?</div>\n";
-			//Setting up div for files to check out to workarea with textarea for folder name
-			files += "<div style='display: none;' id='checkedOut' title='Checkout files'>\n";
-			files += "<label for='my-text'>Send files to Work Area.\n Keep or change this folder name:</label>\n";
-    		files += "<textarea id='my-text'></textarea></div>\n";
-			files += "<input id='checkout' type='button' value='Send to Work Area' />\n";
-			//Adding the required javascript and jquery files
-			files += "<link rel='stylesheet' href='http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css'> \n";
-			files += "<script type='text/javascript' src='http://code.jquery.com/jquery-1.8.3.js'></script> \n";
-			files += "<script type='text/javascript' src='http://code.jquery.com/ui/1.9.2/jquery-ui.js'></script> \n" ;
-			files += "<script type='text/javascript' src='/javascript/jquery-main.js'></script>";
-			//Setting up div for files to be commited
-			if(!updated.isEmpty()){
-				files += "<script type='text/javascript' src='/javascript/jquery-commit.js'></script>";
-				String commitList = "http://localhost:8088/repos/work/commit?comment=changed";
-				for(String s : updated){
-					commitList += "&&entry=" + s ;
-				}
-				files += "<div id='commitFiles' style='visibility: hidden'>" + commitList +"</div>";
+		if(workArea instanceof WorkAreaDropBox ){
+			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workArea;
+			if(!workAreaDropbox.getAccepted()){
+				files += "<p>Follow" + "<a href='" + workAreaDropbox.getAcceptUrl() + "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
+				return Response.ok(files, MediaType.TEXT_HTML).build();
 			}
 		}
+		files = buildResponse(workArea);
 		return Response.ok(files, MediaType.APPLICATION_JSON).build();
 	}
 
@@ -234,6 +175,46 @@ public class WorkAreaResource {
 			@QueryParam("entry") List<String> entry) {
 		workAreaConfiguration.getWorkArea().commitFiles(entry);
 		return Response.ok(comment).build();
+	}
+	
+	private String buildResponse(WorkArea workArea){
+			List<String> fileList = workArea.getFileList(); 
+			List<String> updated = workArea.updatedFileCheck();
+			//Setting up the list for files in repository
+			String files = "<h1 id=div1>Files in repository</h1>\n";
+			files += "<select id='multipleSelect' size= "+fileList.size()  +"  multiple='multiple'>\n" ;
+			for(String s : fileList){	
+				files += "<option value =" + s + ">" + s + " </option> \n";  
+			}
+			files += "</select> \n";
+			//Setting up div with list for files that has been changed
+			files += "<div style='display: none;' id='commit' title='Commit files'>These files have been changed:";
+			files += "<ul>";
+			for(String path : updated){
+				files += "<li>" + path.substring(path.lastIndexOf("/") + 1) + "</li>";
+			}
+			files += "</ul>\n";
+			files += "Do you want to commit these files?</div>\n";
+			//Setting up div for files to check out to workarea with textarea for folder name
+			files += "<div style='display: none;' id='checkedOut' title='Checkout files'>\n";
+			files += "<label for='my-text'>Send files to Work Area.\n Keep or change this folder name:</label>\n";
+    		files += "<textarea id='my-text'></textarea></div>\n";
+			files += "<input id='checkout' type='button' value='Send to Work Area' />\n";
+			//Adding the required javascript and jquery files
+			files += "<link rel='stylesheet' href='http://code.jquery.com/ui/1.9.2/themes/base/jquery-ui.css'> \n";
+			files += "<script type='text/javascript' src='http://code.jquery.com/jquery-1.8.3.js'></script> \n";
+			files += "<script type='text/javascript' src='http://code.jquery.com/ui/1.9.2/jquery-ui.js'></script> \n" ;
+			files += "<script type='text/javascript' src='/javascript/jquery-main.js'></script>";
+			//Setting up div for files to be commited
+			if(!updated.isEmpty()){
+				files += "<script type='text/javascript' src='/javascript/jquery-commit.js'></script>";
+				String commitList = "http://localhost:8088/repos/work/commit?comment=changed";
+				for(String s : updated){
+					commitList += "&&entry=" + s ;
+				}
+				files += "<div id='commitFiles' style='visibility: hidden'>" + commitList +"</div>";
+			}
+		return files ;
 	}
 	
 }
