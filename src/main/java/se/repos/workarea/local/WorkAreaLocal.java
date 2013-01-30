@@ -53,29 +53,25 @@ public class WorkAreaLocal implements WorkArea {
 				long lDateTime = new Date().getTime();
 				source.setLastModified(lDateTime);
 				
-				int index = source.getName().lastIndexOf('.');
-				if(index >= 0){
-					String fileName = source.getName().substring(0, index);
-					File reposFolder = new File(tempRepository);
-					if(reposFolder.exists() && reposFolder.isDirectory()){
-						File lockFile = new File(reposFolder,fileName +".lock");
-						try {
-							lockFile.createNewFile();
-							if(lockFile.exists()){
-								String content = localFolder+folderName+"/"+source.getName();
-								FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
-								BufferedWriter bw = new BufferedWriter(fw);
-								bw.write(content);
-								bw.close();
-							}
-						} catch (IOException e) {
-							logger.info("Something went wrong while writing to lock file");
+				File reposFolder = new File(tempRepository);
+				if(reposFolder.exists() && reposFolder.isDirectory()){
+					File lockFile = new File(reposFolder,source.getName() +".lock");
+					try {
+						lockFile.createNewFile();
+						if(lockFile.exists()){
+							String content = localFolder+folderName+"/"+source.getName();
+							FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
+							BufferedWriter bw = new BufferedWriter(fw);
+							bw.write(content);
+							bw.close();
 						}
+					} catch (IOException e) {
+						logger.info("Something went wrong while writing to lock file");
 					}
 				}
+			}
 				
-    		}
-		}
+    	}
 
 		/**
 		*List files in local temporary repository
@@ -125,33 +121,28 @@ public class WorkAreaLocal implements WorkArea {
 		*/
 		public void commitFiles(List<String> files){
 			for(String fileName : files){
-				int index = fileName.lastIndexOf('.');
-				if(index>=0){
-					String fileN = fileName.substring(0, index);
-					File reposFolder = new File(tempRepository);
-					File lockFile = new File(reposFolder,fileN + ".lock");
-					String localPath = "";
-					if(lockFile.exists());{
-						try{
-							FileInputStream in = new FileInputStream(lockFile);
-							BufferedReader br = new BufferedReader(new InputStreamReader(in));
-							localPath = br.readLine();
-							br.close();
-						}catch(Exception e){
-							logger.info("Something went wrong while reading lock file");
-						}
-						File source = new File(localPath);
-						File target = new File(tempRepository + fileName);
-						if(source.exists() && target.exists()){
-							writeToFile(source,target);
-							source.delete();
-							File parentFolder = source.getParentFile();
-							if(parentFolder.list().length == 0)
-								parentFolder.delete();
-							lockFile.delete();
-						}
-								
+				File reposFolder = new File(tempRepository);
+				File lockFile = new File(reposFolder,fileName + ".lock");
+				String localPath = "";
+				if(lockFile.exists());{
+					try{
+						FileInputStream in = new FileInputStream(lockFile);
+						BufferedReader br = new BufferedReader(new InputStreamReader(in));
+						localPath = br.readLine();
+						br.close();
+					}catch(Exception e){
+						logger.info("Something went wrong while reading lock file");
 					}
+					File source = new File(localPath);
+					File target = new File(tempRepository + fileName);
+					if(source.exists() && target.exists()){
+						writeToFile(source,target);
+						source.delete();
+						File parentFolder = source.getParentFile();
+						if(parentFolder.list().length == 0)
+							parentFolder.delete();
+						lockFile.delete();
+					}			
 				}
 			}
 		}
