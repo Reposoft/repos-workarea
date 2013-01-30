@@ -166,31 +166,26 @@ public class WorkAreaDropBox implements WorkArea{
 				api.putFile(folderName+ "/" +source.getName(), inputStream2,bos.size(), null, null);
 				long lDateTime = new Date().getTime();
 				source.setLastModified(lDateTime);
-				
-		
-				int index = source.getName().lastIndexOf('.');
-				if(index >= 0){
-					String fileName = source.getName().substring(0, index);
-					File reposFolder = new File(tempRepository);
-					if(reposFolder.exists() && reposFolder.isDirectory()){
-						File lockFile = new File(reposFolder,fileName +".lock");
-						try {
-							lockFile.createNewFile();
-							if(lockFile.exists()){
-								String content = folderName+"/"+source.getName();
-								FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
-								BufferedWriter bw = new BufferedWriter(fw);
-								bw.write(content);
-								bw.close();
-							}
-						} catch (IOException e) {
-							logger.info("Something went wrong while writing to lock file");
+	
+				File reposFolder = new File(tempRepository);
+				if(reposFolder.exists() && reposFolder.isDirectory()){
+					File lockFile = new File(reposFolder,source.getName() +".lock");
+					try{
+						lockFile.createNewFile();
+						if(lockFile.exists()){
+							String content = folderName+"/"+source.getName();
+							FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
+							BufferedWriter bw = new BufferedWriter(fw);
+							bw.write(content);
+							bw.close();
 						}
+					}catch (IOException e) {
+						logger.info("Something went wrong while writing to lock file");
 					}
 				}
             }catch (Exception e) {
-					logger.info("Somthing went wrong while uploading file to dropbox");
-	    			logger.info("Stacktrace: " + e);
+				logger.info("Somthing went wrong while uploading file to dropbox");
+	    		logger.info("Stacktrace: " + e);
 			}
 		}
 	}
@@ -277,58 +272,54 @@ public class WorkAreaDropBox implements WorkArea{
 		authenticate();
         FileOutputStream outputStream = null;
         for(String s : files){
-		try {
-			String fileN = s.substring(s.lastIndexOf("/") + 1);
-			int index = fileN.lastIndexOf('.');
-			if(index>=0){
-				fileN = fileN.substring(0, index);
-				File reposFolder = new File(tempRepository);
-				File lockFile = new File(reposFolder,fileN + ".lock");
-				String dropboxPath = "";
-				if(lockFile.exists());{
-					FileInputStream in = new FileInputStream(lockFile);
-					BufferedReader br = new BufferedReader(new InputStreamReader(in));
-					dropboxPath = br.readLine();
-					br.close();
-					lockFile.delete();
-				}
-			
-				//File in repository which to store change in, is set to a local temp folder (tmp/repos-test/)
-				File file = new File(tempRepository + s.substring(s.lastIndexOf("/") + 1));
-				outputStream = new FileOutputStream(file);
-				//Get file from dropbox 
-				DropboxFileInfo info = api.getFile(dropboxPath, null, outputStream, null);
-				//Get entry for this dropbox file   
-				Entry fileMetadata = info.getMetadata();
-				//Delete file from dropbox     	
-				api.delete(s);
-				//Get entry for files parent folder
-				Entry parentFolder = api.metadata(fileMetadata.parentPath(),0,null,true,null);
-				//Checks if parent folder is empty, and delete folder if it is
-				if(parentFolder.contents.isEmpty())
-					api.delete(fileMetadata.parentPath());
-			}
-			} catch (DropboxException de) {
-    			logger.info("Something went wrong while downloading");
-    			logger.info("Stacktrace: " + de);
-    			acceptedUrl = false;
-    			initializeDropbox();
-			} catch (FileNotFoundException fe) {
-    			logger.info("File not found");
-    			logger.info("Stacktrace" + fe);
-			} catch (IOException e) {
-				logger.info("Problem reading .lock file");
-				e.printStackTrace();
-			} finally {
-    		if (outputStream != null) {
-        		try {
-            		outputStream.close();
-        		} catch (IOException IOe) {
-        			logger.info("Something went wrong with outputstream");
-        			logger.info("Stacktrace: " + IOe);
+        	try{
+        		String fileN = s.substring(s.lastIndexOf("/") + 1);
+        		File reposFolder = new File(tempRepository);
+        		File lockFile = new File(reposFolder,fileN + ".lock");
+        		String dropboxPath = "";
+        		if(lockFile.exists()){
+        			FileInputStream in = new FileInputStream(lockFile);
+        			BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        			dropboxPath = br.readLine();
+        			br.close();
+        			lockFile.delete();
         		}
-    		}
-			}
+			
+        		//File in repository which to store change in, is set to a local temp folder (tmp/repos-test/)
+        		File file = new File(tempRepository + s.substring(s.lastIndexOf("/") + 1));
+        		outputStream = new FileOutputStream(file);
+        		//Get file from dropbox 
+        		DropboxFileInfo info = api.getFile(dropboxPath, null, outputStream, null);
+        		//Get entry for this dropbox file   
+        		Entry fileMetadata = info.getMetadata();
+        		//Delete file from dropbox     	
+        		api.delete(s);
+        		//Get entry for files parent folder
+        		Entry parentFolder = api.metadata(fileMetadata.parentPath(),0,null,true,null);
+        		//Checks if parent folder is empty, and delete folder if it is
+        		if(parentFolder.contents.isEmpty())
+        			api.delete(fileMetadata.parentPath());
+        	}catch (DropboxException de) {
+        		logger.info("Something went wrong while downloading");
+        		logger.info("Stacktrace: " + de);
+        		acceptedUrl = false;
+        		initializeDropbox();
+        	}catch (FileNotFoundException fe) {
+        		logger.info("File not found");
+        		logger.info("Stacktrace" + fe);
+        	}catch (IOException e) {
+        		logger.info("Problem reading .lock file");
+        		e.printStackTrace();
+        	}finally {
+        		if(outputStream != null) {
+        			try {
+        				outputStream.close();
+        			}catch(IOException IOe) {
+        				logger.info("Something went wrong with outputstream");
+        				logger.info("Stacktrace: " + IOe);
+        			}
+        		}
+        	}
 		}
 	}
 	
