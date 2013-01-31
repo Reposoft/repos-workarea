@@ -176,5 +176,20 @@ public class WorkAreaLocal implements WorkArea {
 				}
 			}
 		}
+		
+		public String getLocalFolder(){
+			return this.localFolder;
+		}
+		
+		public void setLocalFolder(String localFolder){
+			this.localFolder = localFolder;
+		}
+		
+		public String getLocalRepository(){
+			return this.tempRepository;
+		}
 
+		public void setLocalRepository(String tempRepository){
+			this.tempRepository = tempRepository;
+		}
 }
