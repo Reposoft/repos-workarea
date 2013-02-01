@@ -8,13 +8,14 @@ package se.repos.workarea.local;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.junit.Test;
 
-import se.repos.workarea.local.*;
+import se.repos.workarea.local.WorkAreaLocal;
 
 public class TestWorkAreaLocal {
 	
@@ -23,20 +24,30 @@ public class TestWorkAreaLocal {
 	private String localFolder     = workarea.getLocalFolder();
 	private List<String> filesToCommit;
 	private String testUploadFolderName = "TEST-LOCAL-FOLDER";
-	private String webAppPathFromTest = "../repos-workarea-webapp/";
-
-	@Test
-	public void testLocalFolder() {
-		File fileFolder = new File(webAppPathFromTest + localFolder);
-		assertTrue(fileFolder.exists());
-		assertTrue(fileFolder.isDirectory());
-	}
 	
 	@Test
 	public void testUploadFile(){
-		workarea.setLocalRepository(webAppPathFromTest + localRepository); 
-		workarea.setLocalFolder(webAppPathFromTest + localFolder);
-		File repositoryFolder = new File(webAppPathFromTest + localRepository);
+		
+		File repositoryFolder = new File(localRepository);
+		if(!repositoryFolder.exists())
+			repositoryFolder.mkdirs();
+
+		if(repositoryFolder.isDirectory() && repositoryFolder.list().length == 0){
+			for(int i = 0 ; i <= 2 ; i++){
+				File testFile = new File(repositoryFolder,"Test"+i+".txt");
+				try {
+					testFile.createNewFile();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		File localFolderFile = new File(localFolder);
+		if(!localFolderFile.exists()){
+			localFolderFile.mkdirs();
+		}
+		
+		
 		
 		assertTrue(repositoryFolder.exists() && repositoryFolder.isDirectory());
 		
@@ -44,10 +55,10 @@ public class TestWorkAreaLocal {
 		List<String> listOfFiles = new LinkedList<String>();
 		if(repositoryFiles.length > 0){
 			for(int i = 0 ; i < repositoryFiles.length ; i++){
-					listOfFiles.add(workarea.getLocalRepository() + repositoryFiles[i].getName());
+					listOfFiles.add(localRepository + repositoryFiles[i].getName());
 			}
 		workarea.uploadFile(testUploadFolderName, listOfFiles);
-		File testUploadFolder = new File(workarea.getLocalFolder() + testUploadFolderName);
+		File testUploadFolder = new File(localFolder + testUploadFolderName);
 		
 		assertTrue(testUploadFolder.exists());
 		
@@ -58,8 +69,6 @@ public class TestWorkAreaLocal {
 	
 	@Test
 	public void testUpdatedFileCheck(){
-		workarea.setLocalRepository(webAppPathFromTest + localRepository); 
-		workarea.setLocalFolder(webAppPathFromTest + localFolder);
 		File testUploadFolder = new File(workarea.getLocalFolder() + testUploadFolderName);
 		
 		assertTrue(testUploadFolder.exists() && testUploadFolder.isDirectory());
@@ -78,8 +87,6 @@ public class TestWorkAreaLocal {
 
 	@Test
 	public void testCommitFiles(){
-		workarea.setLocalRepository(webAppPathFromTest + localRepository); 
-		workarea.setLocalFolder(webAppPathFromTest + localFolder);
 		File testUploadFolder = new File(workarea.getLocalFolder() + testUploadFolderName);	
 		filesToCommit = workarea.updatedFileCheck();
 		
