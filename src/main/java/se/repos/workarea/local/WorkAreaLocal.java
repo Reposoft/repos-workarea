@@ -13,6 +13,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -99,6 +100,13 @@ public class WorkAreaLocal implements WorkArea {
 		public List<String> updatedFileCheck(){
 			List<String> fileUpdated = new LinkedList<String>();
 			File root = new File(localFolder);
+			if(!root.exists()){
+				try {
+					throw new FileNotFoundException();
+				} catch (FileNotFoundException e) {
+					logger.info("Can't find local folder: " + localFolder);
+				}
+			}else{
 			for(File subFolder : Arrays.asList(root.listFiles())){
 					File[]	listFiles = subFolder.listFiles();
 					if(listFiles!=null){
@@ -109,7 +117,9 @@ public class WorkAreaLocal implements WorkArea {
 						}	
 					}
 			}
+			}
 			return fileUpdated;
+			
 		}
 
 
@@ -173,6 +183,8 @@ public class WorkAreaLocal implements WorkArea {
 					outStream.close();
 				}catch(IOException ioE){
 					logger.info("Somthing went wrong while closing stream");
+				}catch(NullPointerException e){
+					logger.info("Can't find local folder: " + localFolder);
 				}
 			}
 		}
