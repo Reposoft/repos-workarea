@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import se.repos.workarea.local.WorkAreaLocal;
@@ -97,4 +98,29 @@ public class TestWorkAreaLocal {
 		
 		assertTrue(!testUploadFolder.exists());
 	}
+	
+	@Test
+	public void testDestinationFolderMissing() {
+		// TODO there is no error message in webapp if the work area target folder does not exist. Send just appears to work.
+		//log says
+		//07:15:39.421 [qtp1713279871-19] INFO  s.repos.workarea.local.WorkAreaLocal - Something went wrong while copying file
+		//07:15:39.421 [qtp1713279871-19] INFO  s.repos.workarea.local.WorkAreaLocal - Can't find local folder: tmp/testLocalfolder/
+		
+	}
+	
+	@Test
+	public void testSelectedFilesAlreadyLocked() {
+		// TODO there is no check that file being sent to work area isn't already locked
+		// Ideally this should be reported when listing "repository" files
+		
+	}
+	
+	@Test
+	public void testCommitFilesSomeUnchanged() {
+		// TODO if each folder is a work unit I think all changes should be committed at once and unchanged files should be unlocked in repository
+		// then after commit the entire work area should be deleted
+		// THis might need some clarifications in the UI
+		
+	}
+	
 }
