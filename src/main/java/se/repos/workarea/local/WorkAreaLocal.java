@@ -19,8 +19,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Date;
 
+import javax.inject.Inject;
+
+import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
+import se.simonsoft.cms.item.info.CmsItemLookup;
 
 
 public class WorkAreaLocal implements WorkArea {
@@ -29,13 +33,24 @@ public class WorkAreaLocal implements WorkArea {
 		private String localFolder;
 		private String tempRepository;
 
+		// services injected for current repository
+		private CmsItemLookup lookup;
+		private WorkAreaCmsItemAdditionalOperations modify;
 
-		public WorkAreaLocal(){
+		@Inject
+		public WorkAreaLocal(CmsItemLookup lookup){
 			this.localFolder = "tmp/testLocalfolder/";
 			this.tempRepository = "tmp/repos-test/";
 		}
 
-
+		/**
+		 * Needed in addition to CmsItemLookup. 
+		 * @param repositoryOperations
+		 */
+		@Inject
+		public void setModify(WorkAreaCmsItemAdditionalOperations repositoryOperations) {
+			this.modify = repositoryOperations;
+		}
 
 		/**
 		*Uploads files from local folder to local temporary repository

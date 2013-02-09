@@ -20,8 +20,14 @@ import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.Date;
 import java.io.FileOutputStream;
+
+import javax.inject.Inject;
+
+import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
+import se.simonsoft.cms.item.CmsItemLock;
+import se.simonsoft.cms.item.info.CmsItemLookup;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -48,15 +54,30 @@ public class WorkAreaDropBox implements WorkArea{
 	public static final Lgr logger = LgrFactory.getLogger();
 	private String acceptUrl;
 	private boolean acceptedUrl = false;
+	
+	@Deprecated // use CmsItemLookup getImmediate* and getItem
 	private String tempRepository;
+	
+	// services injected for current repository
+	private CmsItemLookup lookup;
+	private WorkAreaCmsItemAdditionalOperations modify;
 
-
-	public WorkAreaDropBox(){
+	@Inject
+	public WorkAreaDropBox(CmsItemLookup lookup){
+		this.lookup = lookup;
 		initializeDropbox();
 		//Repository set to local temp folder
 		this.tempRepository = "tmp/repos-test/";
 	}
-
+	
+	/**
+	 * Needed in addition to CmsItemLookup. 
+	 * @param repositoryOperations
+	 */
+	@Inject
+	public void setModify(WorkAreaCmsItemAdditionalOperations repositoryOperations) {
+		this.modify = repositoryOperations;
+	}
 
 	/**
 	*Re-authentication to dropbox if TOKENS file exists

@@ -20,7 +20,7 @@ import se.repos.workarea.local.WorkAreaLocal;
 
 public class TestWorkAreaLocal {
 	
-	private WorkAreaLocal workarea = new WorkAreaLocal();
+	private WorkAreaLocal workarea = new WorkAreaLocal(null); // TODO unit tests should mock CmsItemLookup and commit service, integation tests for file system could use real impls
 	private String localRepository = workarea.getLocalRepository();
 	private String localFolder     = workarea.getLocalFolder();
 	private List<String> filesToCommit;
