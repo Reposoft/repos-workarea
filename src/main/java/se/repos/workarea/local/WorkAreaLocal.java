@@ -19,12 +19,16 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Date;
 
-import javax.inject.Inject;
-
+import se.repos.backend.file.CmsItemFilesystem;
+import se.repos.backend.file.CmsItemLookupFilesystem;
 import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
-import se.simonsoft.cms.item.info.CmsItemLookup;
+import se.simonsoft.cms.item.CmsItem;
+import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsItemPath;
+import se.simonsoft.cms.item.CmsRepository;
+import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 
 
 public class WorkAreaLocal implements WorkArea {
@@ -33,24 +37,13 @@ public class WorkAreaLocal implements WorkArea {
 		private String localFolder;
 		private String tempRepository;
 
-		// services injected for current repository
-		private CmsItemLookup lookup;
-		private WorkAreaCmsItemAdditionalOperations modify;
 
-		@Inject
-		public WorkAreaLocal(CmsItemLookup lookup){
+		public WorkAreaLocal(){
 			this.localFolder = "tmp/testLocalfolder/";
 			this.tempRepository = "tmp/repos-test/";
 		}
 
-		/**
-		 * Needed in addition to CmsItemLookup. 
-		 * @param repositoryOperations
-		 */
-		@Inject
-		public void setModify(WorkAreaCmsItemAdditionalOperations repositoryOperations) {
-			this.modify = repositoryOperations;
-		}
+
 
 		/**
 		*Uploads files from local folder to local temporary repository
@@ -82,12 +75,15 @@ public class WorkAreaLocal implements WorkArea {
 							bw.close();
 						}
 					} catch (IOException e) {
-						logger.info("Something went wrong while writing to lock file");
+						String errorMsg = "Someting went wrong while writing to lock file";
+						logger.error(errorMsg,e);
+						throw new RuntimeException(errorMsg,e);
 					}
 				}
 			}
 				
     	}
+		
 
 		/**
 		*List files in local temporary repository
@@ -106,7 +102,6 @@ public class WorkAreaLocal implements WorkArea {
 			return repositoryFiles;
 		}
 
-
 		/**
 		*Checks if files in local folder has been updated 
 		*
@@ -119,7 +114,9 @@ public class WorkAreaLocal implements WorkArea {
 				try {
 					throw new FileNotFoundException();
 				} catch (FileNotFoundException e) {
-					logger.info("Can't find local folder: " + localFolder);
+					String errorMsg = "Can't find local folder: " + localFolder; 
+					logger.error(errorMsg,e);
+					throw new RuntimeException(errorMsg,e);
 				}
 			}else{
 			for(File subFolder : Arrays.asList(root.listFiles())){
@@ -156,7 +153,9 @@ public class WorkAreaLocal implements WorkArea {
 						localPath = br.readLine();
 						br.close();
 					}catch(Exception e){
-						logger.info("Something went wrong while reading lock file");
+						String errorMsg =  "Someting went wrong while reading lock file";
+						logger.error(errorMsg,e);
+						throw new RuntimeException(errorMsg,e);
 					}
 					File source = new File(localPath);
 					File target = new File(tempRepository + fileName);
@@ -191,15 +190,21 @@ public class WorkAreaLocal implements WorkArea {
 					bytesRead = inStream.read(buffer);
 				}
 			}catch(IOException e){
-				logger.info("Something went wrong while copying file");
+				String errorMsg = "Something went wrong while copying file";
+				logger.error(errorMsg,e);
+				throw new RuntimeException(errorMsg,e);
 			}finally{
 				try{
 					inStream.close();
 					outStream.close();
 				}catch(IOException ioE){
-					logger.info("Somthing went wrong while closing stream");
+					String errorMsg = "Someting went wrong while closing stream";
+					logger.error(errorMsg,ioE);
+					throw new RuntimeException(errorMsg,ioE);
 				}catch(NullPointerException e){
-					logger.info("Can't find local folder: " + localFolder);
+					String errorMsg = "Can't find local folder: " + localFolder;
+					logger.error(errorMsg,e);
+					throw new RuntimeException(errorMsg,e);
 				}
 			}
 		}
