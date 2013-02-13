@@ -20,14 +20,8 @@ import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.Date;
 import java.io.FileOutputStream;
-
-import javax.inject.Inject;
-
-import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
-import se.simonsoft.cms.item.CmsItemLock;
-import se.simonsoft.cms.item.info.CmsItemLookup;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -53,31 +47,19 @@ public class WorkAreaDropBox implements WorkArea{
 
 	public static final Lgr logger = LgrFactory.getLogger();
 	private String acceptUrl;
-	private boolean acceptedUrl = false;
-	
-	@Deprecated // use CmsItemLookup getImmediate* and getItem
 	private String tempRepository;
-	
-	// services injected for current repository
-	private CmsItemLookup lookup;
-	private WorkAreaCmsItemAdditionalOperations modify;
+	private String dropboxURL;
+	private String dropboxAccept;
 
-	@Inject
-	public WorkAreaDropBox(CmsItemLookup lookup){
-		this.lookup = lookup;
+	public WorkAreaDropBox(){
 		initializeDropbox();
 		//Repository set to local temp folder
 		this.tempRepository = "tmp/repos-test/";
+		this.dropboxURL = "http://localhost:8088/repos/work/admin";
+		this.dropboxAccept = "If you have not accepted this applikation for use in dropbox";
+		this.dropboxAccept += "please visit this URL: " + dropboxURL +" and do so.";
 	}
-	
-	/**
-	 * Needed in addition to CmsItemLookup. 
-	 * @param repositoryOperations
-	 */
-	@Inject
-	public void setModify(WorkAreaCmsItemAdditionalOperations repositoryOperations) {
-		this.modify = repositoryOperations;
-	}
+
 
 	/**
 	*Re-authentication to dropbox if TOKENS file exists
@@ -95,12 +77,13 @@ public class WorkAreaDropBox implements WorkArea{
 			}
 			br.close();
 		}catch(Exception e){
-			logger.info("Something went wrong while trying to read TOKENS file");
-			logger.info("Stacktrace: " + e);
+			String errorMsg = "Something went wrong while trying to read TOKENS file";
+			logger.error(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
 		}
 		String AUTH_KEY = list.get(0);
 		String AUTH_SECRET = list.get(1);
-		// re-authenticate with dropbox ket and secret from TOKENS file
+		// re-authenticate with dropbox key and secret from TOKENS file
 		AccessTokenPair reAuthTokens = new AccessTokenPair(AUTH_KEY,AUTH_SECRET);
 		api.getSession().setAccessTokenPair(reAuthTokens);
 		logger.info("Re-authentication Sucessful");
@@ -110,10 +93,9 @@ public class WorkAreaDropBox implements WorkArea{
 					api.accountInfo().displayName + "(" +
 					api.accountInfo().quota + ")");
 		} catch (DropboxException e) {
-			logger.info("Could not retrieve account info");
-			logger.info("Stacktrace: " + e);
-			acceptedUrl = false;
-			initializeDropbox();
+			String errorMsg = "Could not retreive account info. " + dropboxAccept;
+			logger.error(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
 		}
 	}
 
@@ -129,8 +111,9 @@ public class WorkAreaDropBox implements WorkArea{
 			// Perform Check
 			api.getSession().retrieveWebAccessToken(tokens);
 		} catch (DropboxException e) {
-			logger.info("Could not retrieve WebAccessTokens");
-			logger.info("Stacktrace: " + e);
+			String errorMsg = "Could not retreive WebAccessTokens. "  + dropboxAccept;
+			logger.error(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
 		}
 		// Write tokens to file
 		try {
@@ -139,8 +122,9 @@ public class WorkAreaDropBox implements WorkArea{
 			tokenWriter.println(api.getSession().getAccessTokenPair().secret);
 			tokenWriter.close();
 		} catch (Exception e) {
-			logger.info("Something went wrong while writing tokens to file");
-			logger.info("Stacktrace: " + e);
+			String errorMsg = "Something went wrong while writing tokens to file.";
+			logger.error(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
 		}
 
 	}
@@ -201,12 +185,15 @@ public class WorkAreaDropBox implements WorkArea{
 							bw.close();
 						}
 					}catch (IOException e) {
-						logger.info("Something went wrong while writing to lock file");
+						String errorMsg = "Something went wrong while writing to lock file";
+						logger.error(errorMsg,e);
+						throw new RuntimeException(errorMsg,e);
 					}
 				}
             }catch (Exception e) {
-				logger.info("Somthing went wrong while uploading file to dropbox");
-	    		logger.info("Stacktrace: " + e);
+            	String errorMsg = "Something went wrong while uploading file to dropbox. " + dropboxAccept;
+				logger.error(errorMsg,e);
+				throw new RuntimeException(errorMsg,e);
 			}
 		}
 	}
@@ -237,49 +224,34 @@ public class WorkAreaDropBox implements WorkArea{
 	*/
 	public List<String> updatedFileCheck(){
 		List<String> fileUpdated = new LinkedList<String>();
-		//Checks if TOKENS file exists where dropbox key and secret are stored
-		//If not, add accept url to return list
-		File tokensFile = new File("TOKENS"); 
-		if (!tokensFile.exists() && !acceptedUrl) {
-			authenticate();
-			try {
-				Entry tryEntry = api.metadata("/", 0, null, true, null);
-				acceptedUrl = true;
-			} catch (DropboxException e) {
-				logger.info("Problem accesing dropbox: " + e );
-				initializeDropbox();
-			}
-		}else{
-			//Authenticate to dropbox a account
-			authenticate();
-			Entry existingEntry = null;
-			try {
-				//Get Entry for root folder in dropbox
-    			existingEntry =  api.metadata("/", 0, null, true, null);
-    			//For every subfolder in root directory
-    			for (Entry entryFolders : existingEntry.contents){
-					Entry entryFolder = api.metadata("/" + entryFolders.fileName(),0,null,true,null);
-					//For every file in subfolder
-            		for(Entry e : entryFolder.contents){
-            			//Check to se if it exists,
-            			if (!e.isDeleted){
-            				File localFile = new File("tmp/repos-test/" + e.fileName());
-            				Date localDate = new Date(localFile.lastModified());
-            				Date dropboxDate = new Date(e.modified);
-            				//If last modified for drobox file is later than for file in repository, add to return list
-            				if(dropboxDate.after(localDate)){
-								fileUpdated.add(e.path);
-            				}
+		//Authenticate to dropbox a account
+		authenticate();
+		Entry existingEntry = null;
+		try {
+			//Get Entry for root folder in dropbox
+    		existingEntry =  api.metadata("/", 0, null, true, null);
+    		//For every subfolder in root directory
+    		for (Entry entryFolders : existingEntry.contents){
+				Entry entryFolder = api.metadata("/" + entryFolders.fileName(),0,null,true,null);
+				//For every file in subfolder
+            	for(Entry e : entryFolder.contents){
+            		//Check to se if it exists,
+            		if (!e.isDeleted){
+            			File localFile = new File(this.tempRepository + e.fileName());
+            			Date localDate = new Date(localFile.lastModified());
+            			Date dropboxDate = new Date(e.modified);
+            			//If last modified for drobox file is later than for file in repository, add to return list
+            			if(dropboxDate.after(localDate)){
+							fileUpdated.add(e.path);
             			}
-        			}
+            		}
         		}
-			} catch (DropboxException e) {
-    			logger.info("Something went wrong while getting metadata");
-    			logger.info("Stacktrace: " + e);
-    			acceptedUrl = false;
-    			initializeDropbox();
-			}
-    	}
+        	}
+		}catch (DropboxException e) {
+			String errorMsg = "Something went wrong while getting metadata. " + dropboxAccept;
+    		logger.error(errorMsg,e);
+    		throw new RuntimeException(errorMsg,e);
+		}
 		return fileUpdated;
 	}
 
@@ -321,23 +293,25 @@ public class WorkAreaDropBox implements WorkArea{
         		if(parentFolder.contents.isEmpty())
         			api.delete(fileMetadata.parentPath());
         	}catch (DropboxException de) {
-        		logger.info("Something went wrong while downloading");
-        		logger.info("Stacktrace: " + de);
-        		acceptedUrl = false;
-        		initializeDropbox();
+        		String errorMsg = "Something went wrong while downloading from dropbox"  + dropboxAccept;
+        		logger.error(errorMsg,de);
+        		throw new RuntimeException(errorMsg,de);
         	}catch (FileNotFoundException fe) {
-        		logger.info("File not found");
-        		logger.info("Stacktrace" + fe);
+        		String errorMsg = "File not found";
+        		logger.error(errorMsg,fe);
+        		throw new RuntimeException(errorMsg,fe);
         	}catch (IOException e) {
-        		logger.info("Problem reading .lock file");
-        		e.printStackTrace();
+        		String errorMsg = "Problem reading .lock file";
+        		logger.error(errorMsg,e);
+        		throw new RuntimeException(errorMsg,e);
         	}finally {
         		if(outputStream != null) {
         			try {
         				outputStream.close();
         			}catch(IOException IOe) {
-        				logger.info("Something went wrong with outputstream");
-        				logger.info("Stacktrace: " + IOe);
+        				String errorMsg = "Something went wrong with outputstream";
+        				logger.info(errorMsg,IOe);
+        				throw new RuntimeException(errorMsg,IOe);
         			}
         		}
         	}
@@ -345,7 +319,7 @@ public class WorkAreaDropBox implements WorkArea{
 	}
 	
 	
-	private void initializeDropbox(){
+	public void initializeDropbox(){
 		// Initialize the session
 		this.appKeys = new AppKeyPair(KEY, SECRET);
 		WebAuthSession session = new WebAuthSession(appKeys, ACCESS_TYPE);
@@ -354,8 +328,9 @@ public class WorkAreaDropBox implements WorkArea{
 		try{
 			acceptUrl = api.getSession().getAuthInfo().url;
 		}catch (DropboxException e) {
-			logger.info("Could not retrieve AuthInfo from session");
-			logger.info("Stacktrace: " + e);
+			String errorMsg = "Could not retreive AuthInfo from session";
+			logger.info(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
 		}		
 		File tokens = new File("TOKENS");
 		if(tokens.exists()){
@@ -363,10 +338,6 @@ public class WorkAreaDropBox implements WorkArea{
 		}
 	}
 	
-	public boolean getAccepted(){
-		return acceptedUrl;
-	}
-
 	
 	public String getAcceptUrl(){
 		return acceptUrl;
