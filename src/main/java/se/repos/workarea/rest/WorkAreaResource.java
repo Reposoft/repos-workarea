@@ -89,7 +89,7 @@ public class WorkAreaResource {
 		CmsRepository repo = getRepository(repositoryId);
 		List<CmsItemPath> cmstargets = new LinkedList<CmsItemPath>();
 		List<CmsItemId> items = new LinkedList<CmsItemId>();
-
+		
 		//Setting up the Cms files for future use and adding files to be checked out
 		for(String s : targets){
 			CmsItemPath cmsPath = new CmsItemPath(s);
@@ -123,20 +123,7 @@ public class WorkAreaResource {
 	@Path("list")
 	@Produces(MediaType.TEXT_HTML)
 	public Response viewHTML() {	
-		WorkArea workArea = workAreaConfiguration.getWorkArea();
-		List<String> updated = workArea.updatedFileCheck();
-		String files ="";
-		//Building the response which will show in the browser
-		//This is a check if one has accepted the applikation for dropbox, if not this will show link to accept url
-		if(workArea instanceof WorkAreaDropBox ){
-			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workArea;
-			if(!workAreaDropbox.getAccepted()){
-				files += "<p>Follow" + "<a href='" + workAreaDropbox.getAcceptUrl() + "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
-				return Response.ok(files, MediaType.TEXT_HTML).build();
-			}
-		}
-		files = buildResponse(workArea);
-		return Response.ok(files, MediaType.TEXT_HTML).build();
+		return Response.ok(buildResponse(), MediaType.TEXT_HTML).build();
 	}
 
 	 /* 
@@ -146,20 +133,7 @@ public class WorkAreaResource {
 	@Path("list")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response viewJSON(){
-		WorkArea workArea = workAreaConfiguration.getWorkArea();
-		List<String> updated = workArea.updatedFileCheck();
-		String files ="";
-		//Building the response which will show in the browser
-		//This is a check if one has accepted the applikation for dropbox, if not this will show link to accept url
-		if(workArea instanceof WorkAreaDropBox ){
-			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workArea;
-			if(!workAreaDropbox.getAccepted()){
-				files += "<p>Follow" + "<a href='" + workAreaDropbox.getAcceptUrl() + "' target='_blank'> This </a>link and click on allow and then come back and refresh this page</p>";
-				return Response.ok(files, MediaType.TEXT_HTML).build();
-			}
-		}
-		files = buildResponse(workArea);
-		return Response.ok(files, MediaType.APPLICATION_JSON).build();
+		return Response.ok(buildResponse(), MediaType.APPLICATION_JSON).build();
 	}
 
 	/**
@@ -176,8 +150,33 @@ public class WorkAreaResource {
 		workAreaConfiguration.getWorkArea().commitFiles(entry);
 		return Response.ok(comment).build();
 	}
+
+	/**
+	 * Shows link for dropbox users to accept application to use their account
+	 * @return status
+	 */
+	@GET
+	@Path("admin")
+	public Response dropboxAdmin(){
+		WorkArea workarea = workAreaConfiguration.getWorkArea();
+		String listURL = "'http://localhost:8088/repos/work/list'";
+		String response ="";
+		if(workarea instanceof WorkAreaDropBox){
+			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workarea;
+			workAreaDropbox.initializeDropbox();
+			String dropboxURL = workAreaDropbox.getAcceptUrl();
+			response = "<p>Follow" + "<a href='" + dropboxURL + "' target='_blank'> This </a> link";
+			response += " and click on allow and then come back and follow";
+			response += "<a href ="+ listURL +">this</a> link to list files in repository</p>";
+		}else{
+			response = "<p>You have not choosen to work with dropbox,";
+			response +=" please follow <a href ="+ listURL +">this</a> link to list files in repository</p>";
+		}
+		return Response.ok(response,MediaType.TEXT_HTML).build();
+	}
 	
-	private String buildResponse(WorkArea workArea){
+	private String buildResponse(){
+			WorkArea workArea = workAreaConfiguration.getWorkArea();
 			List<String> fileList = workArea.getFileList(); 
 			List<String> updated = workArea.updatedFileCheck();
 			//Setting up the list for files in repository
