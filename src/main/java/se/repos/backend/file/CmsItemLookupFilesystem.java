@@ -6,12 +6,17 @@ package se.repos.backend.file;
 import java.io.File;
 import java.util.Set;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.info.CmsConnectionException;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 import se.simonsoft.cms.item.info.CmsItemNotFoundException;
+import se.simonsoft.cms.item.info.CmsLockQuery;
 
 /**
  * The first step towards a local filesystem backend for Repos.
@@ -22,10 +27,16 @@ import se.simonsoft.cms.item.info.CmsItemNotFoundException;
  */
 public class CmsItemLookupFilesystem implements CmsItemLookup {
 	
+	private CmsRepository repository = null;
+	private File root;
+
 	/**
 	 * @param root corresponding to repository root in subversion
 	 */
-	public CmsItemLookupFilesystem(File root) {
+	@Inject
+	public CmsItemLookupFilesystem(CmsRepository repository, @Named("root") File repositoryRoot) {
+		this.repository = repository;
+		this.root = repositoryRoot;
 	}
 	
 	@Override
@@ -56,6 +67,11 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 	@Override
 	public Iterable<CmsItemId> getDescendants(CmsItemId parent) {
 		throw new UnsupportedOperationException("Out of scope in first iteration");
+	}
+
+	@Override
+	public Set<CmsItemId> getLocked(CmsLockQuery query) {
+		throw new UnsupportedOperationException("not implemented");
 	}
 
 }

@@ -21,7 +21,6 @@ import java.util.Date;
 
 import se.repos.backend.file.CmsItemFilesystem;
 import se.repos.backend.file.CmsItemLookupFilesystem;
-import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
 import se.simonsoft.cms.item.CmsItem;

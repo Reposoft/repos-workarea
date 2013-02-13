@@ -10,6 +10,7 @@ import se.simonsoft.cms.item.Checksum;
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemKind;
+import se.simonsoft.cms.item.CmsItemLock;
 import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.properties.CmsItemProperties;
 
@@ -55,6 +56,11 @@ public class CmsItemFilesystem implements CmsItem {
 
 	@Override
 	public String getStatus() {
+		throw new UnsupportedOperationException("not implemented");
+	}
+
+	@Override
+	public CmsItemLock getLock() {
 		throw new UnsupportedOperationException("not implemented");
 	}
 

@@ -28,7 +28,7 @@ public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 		// types are svn, svn-wc or filesystem, currently we use filesystem when evaluating this module
 		CmsItemLookup lookupPerRepositoryType = lookup;
 		// configuration per user not in scope for first iteration
-		WorkArea workareaCurrent = new WorkAreaDropBox(lookup);
+		WorkArea workareaCurrent = new WorkAreaDropBox(); // TODO get services from dependency injection
 		return workareaCurrent;
 	}
 
