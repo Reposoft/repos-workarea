@@ -7,12 +7,14 @@ import javax.inject.Inject;
 
 import se.repos.authproxy.ReposCurrentUser;
 import se.repos.workarea.dropbox.WorkAreaDropBox;
+import se.simonsoft.cms.item.commit.CmsCommit;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 
 public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 
 	private ReposCurrentUser reposCurrentUser;
 	private CmsItemLookup lookup;
+	private CmsCommit commit;
 	
 	@Inject public void setReposCurrentUser(ReposCurrentUser reposCurrentUser) {
 		this.reposCurrentUser = reposCurrentUser;
@@ -21,14 +23,19 @@ public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 	@Inject public void setCmsItemLookup(CmsItemLookup lookup) {
 		this.lookup = lookup;
 	}
+
+	@Inject public void setCmsCommit(CmsCommit commit) {
+		this.commit = commit;
+	}
 	
 	@Override
 	public WorkArea getWorkArea() {
 		String username = reposCurrentUser.getUsername();
 		// types are svn, svn-wc or filesystem, currently we use filesystem when evaluating this module
 		CmsItemLookup lookupPerRepositoryType = lookup;
+		CmsCommit commitPerRepositoryType = commit;
 		// configuration per user not in scope for first iteration
-		WorkArea workareaCurrent = new WorkAreaDropBox(); // TODO get services from dependency injection
+		WorkArea workareaCurrent = new WorkAreaDropBox(lookup, commit);
 		return workareaCurrent;
 	}
 

@@ -20,8 +20,13 @@ import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.Date;
 import java.io.FileOutputStream;
+
+import javax.inject.Inject;
+
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
+import se.simonsoft.cms.item.commit.CmsCommit;
+import se.simonsoft.cms.item.info.CmsItemLookup;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -51,6 +56,9 @@ public class WorkAreaDropBox implements WorkArea{
 	private String dropboxURL;
 	private String dropboxAccept;
 
+	/**
+	 * @deprecated Not using abstractions
+	 */
 	public WorkAreaDropBox(){
 		initializeDropbox();
 		//Repository set to local temp folder
@@ -60,6 +68,20 @@ public class WorkAreaDropBox implements WorkArea{
 		this.dropboxAccept += "please visit this URL: " + dropboxURL +" and do so.";
 	}
 
+	/**
+	 * 
+	 * @param lookup
+	 * @param commit
+	 */
+	@Inject
+	public WorkAreaDropBox(CmsItemLookup lookup, CmsCommit commit) {
+		// TODO use these abstractions
+	}
+	
+	@Inject
+	public void setDropboxTokenStore(/* TODO */) {
+		// TODO use token store abstraction
+	}
 
 	/**
 	*Re-authentication to dropbox if TOKENS file exists

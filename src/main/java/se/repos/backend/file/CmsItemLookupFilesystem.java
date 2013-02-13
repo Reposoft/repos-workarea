@@ -49,6 +49,8 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 	@Override
 	public Set<CmsItem> getImmediates(CmsItemId parent)
 			throws CmsConnectionException, CmsItemNotFoundException {
+		// for each file in dir do
+			//parent.withRelPath(parent.getRelPath().append(filename));
 		throw new UnsupportedOperationException("not implemented");
 	}	
 	
