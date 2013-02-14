@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>se.simonsoft</groupId>
 			<artifactId>cms-item</artifactId>
-			<version>2.1-20130213.170146-4</version>
+			<version>2.1-20130214.200139-5</version>
 		</dependency>
 		<dependency>
 		    <groupId>se.repos</groupId>
