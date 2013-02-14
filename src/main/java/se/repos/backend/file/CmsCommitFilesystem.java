@@ -84,13 +84,15 @@ public class CmsCommitFilesystem implements CmsCommit {
 	
 	void handle(FileModification change) {
 		CmsItemFilesystem file = item(change.getPath());
+		if (!file.getFile().exists()) {
+			throw new CmsItemNotFoundException(file.getId());
+		}
 		InputStream incoming = change.getWorkingFile();
 		FileOutputStream out;
 		try {
 			out = new FileOutputStream(file.getFile());
 		} catch (FileNotFoundException e) {
-			// This happens if the dir does not exist but the file will be created if it does
-			throw new CmsItemNotFoundException(file.getId());
+			throw new RuntimeException("File went missing during the operation"); // There'll probably be lots of such cases for the filesystem impls, should we define a conflict exception?
 		}
 		try {
 			byte[] buf = new byte[4096];

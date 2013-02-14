@@ -22,6 +22,7 @@ import se.simonsoft.cms.item.commit.CmsCommit;
 import se.simonsoft.cms.item.commit.CmsCommitChangeset;
 import se.simonsoft.cms.item.commit.FileModification;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
+import se.simonsoft.cms.item.info.CmsItemNotFoundException;
 
 public class CmsCommitFilesystemTest {
 
@@ -61,6 +62,21 @@ public class CmsCommitFilesystemTest {
 		assertEquals("Should have written file", "A\nB\n", FileUtils.readFileToString(file));
 	}
 
+	@Test
+	public void testRunFileModificationNotExisting() throws IOException {
+		CmsItemId fileId = new CmsItemIdUrl(repo, "/file1.txt");
+		RepoRevision rev = new RepoRevision(-1, new Date());
+		
+		CmsCommitChangeset changeset = new CmsCommitChangeset();
+		changeset.add(new FileModification(fileId.getRelPath(), rev, null, new ByteArrayInputStream("x".getBytes())));
+		try {
+			commit.run(changeset);
+			fail("Should bail out at attempt to modify non existing file");
+		} catch (CmsItemNotFoundException e) {
+			assertEquals(fileId.getRelPath(), e.getPath());
+		}
+	}	
+	
 	@Test
 	public void testRunFileModificationsWrongRev() {
 		// TODO when rev is given we should verify that it matches last modified date, or else someone else might have modified it
