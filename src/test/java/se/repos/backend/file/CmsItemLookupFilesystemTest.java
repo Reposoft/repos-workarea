@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) 2004-2012 Repos Mjukvara AB
+ */
 package se.repos.backend.file;
 
 import static org.junit.Assert.*;
