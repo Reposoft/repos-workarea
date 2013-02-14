@@ -18,6 +18,7 @@ import se.simonsoft.cms.item.commit.CmsItemLockedException;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.impl.CmsRepositoryId;
 import se.simonsoft.cms.item.info.CmsItemLookup;
+import se.simonsoft.cms.item.info.CmsLockQuery;
 
 /**
  * Tests CmsCommit and CmsItemLookup lock emulation for plain filesystem.
@@ -42,7 +43,7 @@ public class LockingFilesystemTest {
 	public void testLock() throws IOException {
 		File file = new File(root, "file1.txt");
 		file.createNewFile();
-		CmsItemId fileId = new CmsItemIdUrl(repo, "/file.txt");
+		CmsItemId fileId = new CmsItemIdUrl(repo, "/file1.txt");
 		
 		// lock
 		commit.lock("Locking\ntest", fileId.getRelPath());
@@ -71,12 +72,40 @@ public class LockingFilesystemTest {
 		commit.unlock(fileId.getRelPath(), fileItem.getLock());
 		assertFalse("Should have removed lock file", fileLock.exists());
 		
-		// unlock again, result TBD
+		// unlock again, should we let that pass or should we throw exception?
 	}
 	
 	@Test
 	public void testUnlockWithWrongToken() {
 		// lock tokens not needed yet
+	}
+	
+	@Test
+	public void testLockMessageGlobbing() throws IOException {
+		// workarea needs this to be able to locate the files that correspond to a specific area
+		
+		File file1 = new File(root, "file1.txt");
+		file1.createNewFile();
+		CmsItemId file1Id = new CmsItemIdUrl(repo, "/file1.txt");
+		File dir = new File(root, "folder");
+		dir.mkdir();
+		File file2 = new File(dir, "f2.js");
+		file2.createNewFile();
+		CmsItemId file2Id = new CmsItemIdUrl(repo, "/folder/f2.js");
+		
+		commit.lock("message abc", file1Id.getRelPath());
+		commit.lock("message xyz", file2Id.getRelPath());
+		
+		Set<CmsItemId> r1 = lookup.getLocked(new CmsLockQuery().setMessageGlob("* abc"));
+		assertEquals("Should find one lock based on ends-with pattern", 1, r1.size());
+		assertEquals(file1Id, r1.iterator().next());
+		
+		Set<CmsItemId> r2 = lookup.getLocked(new CmsLockQuery().setMessageGlob("message xyz"));
+		assertEquals("Should find one lock based on exact match", 1, r2.size());
+		assertEquals(file2Id, r2.iterator().next());
+		
+		Set<CmsItemId> r3 = lookup.getLocked(new CmsLockQuery().setMessageGlob("message *"));
+		assertEquals("Should find both locks based on starts-with pattern", 2, r3.size());
 	}
 	
 }

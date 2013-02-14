@@ -42,8 +42,9 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 	@Override
 	public CmsItem getItem(CmsItemId id) throws CmsConnectionException,
 			CmsItemNotFoundException {
-		id.getRelPath(); // to get path from local storage parent folder
-		throw new UnsupportedOperationException("Not implemented");
+		File f = new File(root, id.getRelPath().getPathTrimmed());
+		CmsItem item = new CmsItemFilesystem(f, id);
+		return item;
 	}
 
 	@Override
