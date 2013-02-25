@@ -3,16 +3,15 @@
  */
 package se.repos.workarea.rest;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.io.File;
-import java.util.*;
+
 
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -22,7 +21,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import se.repos.authproxy.ReposCurrentUser;
 import se.repos.workarea.WorkAreaConfiguration;
 import se.repos.workarea.WorkArea;
 import se.repos.workarea.dropbox.*;
@@ -44,6 +42,10 @@ public class WorkAreaResource {
 	private Map<CmsRepository, CmsItemLookup> itemRead;
 	// out of scope for first iteration //@Inject private Map<CmsRepository, CmsLocking> itemCommit;
 	// out of scope for first iteration //@Inject private Map<CmsRepository, CmsCommit> itemCommit;
+	
+	private DropboxTokenStore tokenStore;
+	
+	
 
 	@Inject
 	public void setWorkAreaConfiguration(WorkAreaConfiguration workAreaConfiguration) {
@@ -54,6 +56,12 @@ public class WorkAreaResource {
 	public void setItemRead(Map<CmsRepository, CmsItemLookup> itemRead) {
 		this.itemRead = itemRead;
 	}
+	
+	@Inject public void setDropboxTokenStore(@Named("tokenstore")DropboxTokenStore tokenStore) {
+		this.tokenStore = tokenStore;
+	}
+	
+	
 	
 	/**
 	 * Basic mapping of repository name to URL, until this module can access current host's repository configuration.
@@ -84,26 +92,18 @@ public class WorkAreaResource {
 	public Response checkout(
 			@PathParam("repo") String repositoryId,
 			@QueryParam("target") List<String> targets) {
-		//Files to be sent to workarea
-		List<String> filePaths = new LinkedList<String>();
 		CmsRepository repo = getRepository(repositoryId);
-		List<CmsItemPath> cmstargets = new LinkedList<CmsItemPath>();
+		//Files to be sent to workarea
 		List<CmsItemId> items = new LinkedList<CmsItemId>();
 		
-		//Setting up the Cms files for future use and adding files to be checked out
+		//Setting up the Cms files 
 		for(String s : targets){
 			CmsItemPath cmsPath = new CmsItemPath(s);
-			cmstargets.add(cmsPath);
 			CmsItemIdUrl cmsUrl = new CmsItemIdUrl(repo,cmsPath);
 			items.add(cmsUrl);
-			String path = cmsUrl.getRelPath().getPath();
-			if(path.startsWith("/")){
-				path = path.substring(1,path.length());
-			}
-			filePaths.add(path);
 		}
-		if(!filePaths.isEmpty())
-			workAreaConfiguration.getWorkArea().uploadFile(repositoryId,filePaths);
+		if(!items.isEmpty())
+			workAreaConfiguration.getWorkArea().uploadFile(repositoryId,items);
 
 		String answer = "<h1>" + repositoryId + "</h1>";
 		return Response.ok(answer).build();
@@ -147,7 +147,21 @@ public class WorkAreaResource {
 	public Response commit(
 			@QueryParam("comment") String comment,
 			@QueryParam("entry") List<String> entry) {
-		workAreaConfiguration.getWorkArea().commitFiles(entry);
+		//Files to be sent to workarea
+		CmsRepository repo = getRepository(comment);
+		List<CmsItemPath> cmstargets = new LinkedList<CmsItemPath>();
+		List<CmsItemId> items = new LinkedList<CmsItemId>();
+		
+		//Setting up the Cms files for future use and adding files to be checked out
+		for(String s : entry){
+			CmsItemPath cmsPath = new CmsItemPath(s);
+			cmstargets.add(cmsPath);
+			CmsItemIdUrl cmsUrl = new CmsItemIdUrl(repo,cmsPath);
+			items.add(cmsUrl);
+		}
+		if(!items.isEmpty())
+			workAreaConfiguration.getWorkArea().commitFiles(items);
+
 		return Response.ok(comment).build();
 	}
 
@@ -163,7 +177,7 @@ public class WorkAreaResource {
 		String response ="";
 		if(workarea instanceof WorkAreaDropBox){
 			WorkAreaDropBox workAreaDropbox = (WorkAreaDropBox) workarea;
-			workAreaDropbox.initializeDropbox();
+			workAreaDropbox.initializeDropbox(this.tokenStore);
 			String dropboxURL = workAreaDropbox.getAcceptUrl();
 			response = "<p>Follow" + "<a href='" + dropboxURL + "' target='_blank'> This </a> link";
 			response += " and click on allow and then come back and follow";
@@ -179,7 +193,6 @@ public class WorkAreaResource {
 			WorkArea workArea = workAreaConfiguration.getWorkArea();
 			List<String> fileList = workArea.getFileList(); 
 			List<String> updated = workArea.updatedFileCheck();
-			//Setting up the list for files in repository
 			String files = "<h1 id=div1>Files in repository</h1>\n";
 			files += "<select id='multipleSelect' size= "+fileList.size()  +"  multiple='multiple'>\n" ;
 			for(String s : fileList){	
@@ -190,7 +203,7 @@ public class WorkAreaResource {
 			files += "<div style='display: none;' id='commit' title='Commit files'>These files have been changed:";
 			files += "<ul>";
 			for(String path : updated){
-				files += "<li>" + path.substring(path.lastIndexOf("/") + 1) + "</li>";
+				files += "<li>" + path + "</li>";
 			}
 			files += "</ul>\n";
 			files += "Do you want to commit these files?</div>\n";
