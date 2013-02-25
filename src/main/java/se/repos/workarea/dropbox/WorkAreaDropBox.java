@@ -10,23 +10,22 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.lang.NullPointerException;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.util.Date;
 import java.io.FileOutputStream;
 
-import javax.inject.Inject;
-
+import se.repos.backend.file.CmsCommitFilesystem;
+import se.repos.backend.file.CmsItemLockFile;
+import se.repos.backend.file.CmsItemLookupFilesystem;
+import se.repos.backend.file.WorkAreaCmsItemAdditionalOperations;
 import se.repos.lgr.Lgr;
 import se.repos.lgr.LgrFactory;
-import se.simonsoft.cms.item.commit.CmsCommit;
-import se.simonsoft.cms.item.info.CmsItemLookup;
+import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsItemPath;
+import se.simonsoft.cms.item.CmsRepository;
+import se.simonsoft.cms.item.commit.CmsItemLockedException;
+import se.simonsoft.cms.item.impl.CmsRepositoryId;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -51,61 +50,44 @@ public class WorkAreaDropBox implements WorkArea{
 
 
 	public static final Lgr logger = LgrFactory.getLogger();
+	private CmsItemLookupFilesystem cmsLookup;
+	private CmsCommitFilesystem cmsCommit;
+	private CmsRepository repo;
+	private WorkAreaCmsItemAdditionalOperations workareaOperations;
+	private DropboxTokenStore tokenStore;
+	
 	private String acceptUrl;
 	private String tempRepository;
 	private String dropboxURL;
 	private String dropboxAccept;
+	private String userName;
 
-	/**
-	 * @deprecated Not using abstractions
-	 */
-	public WorkAreaDropBox(){
-		initializeDropbox();
+	public WorkAreaDropBox(String userName){
+		this.userName = userName;
 		//Repository set to local temp folder
 		this.tempRepository = "tmp/repos-test/";
 		this.dropboxURL = "http://localhost:8088/repos/work/admin";
 		this.dropboxAccept = "If you have not accepted this applikation for use in dropbox";
 		this.dropboxAccept += "please visit this URL: " + dropboxURL +" and do so.";
+		
+		this.repo = new CmsRepository("http://localhost/svn/testrepo");
+		File root = new File(tempRepository);
+		cmsLookup = new CmsItemLookupFilesystem(this.repo,root);
+		this.workareaOperations = new WorkAreaCmsItemAdditionalOperations();
+		this.cmsCommit = new CmsCommitFilesystem(this.repo,root);
 	}
 
-	/**
-	 * 
-	 * @param lookup
-	 * @param commit
-	 */
-	@Inject
-	public WorkAreaDropBox(CmsItemLookup lookup, CmsCommit commit) {
-		// TODO use these abstractions
-	}
-	
-	@Inject
-	public void setDropboxTokenStore(/* TODO */) {
-		// TODO use token store abstraction
-	}
 
 	/**
 	*Re-authentication to dropbox if TOKENS file exists
 	*/
+	
 	private void reAuthenticate(){
-		File tokensFile = new File("TOKENS");
-		List<String> list = new LinkedList<String>();
-		//Try to read the TOKENS file to get drobpox key and secret
-		try{
-			FileInputStream in = new FileInputStream(tokensFile);
-			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-			String strLine;
-			while((strLine = br.readLine())!= null){
-				list.add(strLine);
-			}
-			br.close();
-		}catch(Exception e){
-			String errorMsg = "Something went wrong while trying to read TOKENS file";
-			logger.error(errorMsg,e);
-			throw new RuntimeException(errorMsg,e);
-		}
-		String AUTH_KEY = list.get(0);
-		String AUTH_SECRET = list.get(1);
-		// re-authenticate with dropbox key and secret from TOKENS file
+		//read token key and secret with username
+		List<String> tokensList = tokenStore.read(this.userName);
+		String AUTH_KEY = tokensList.get(0);
+		String AUTH_SECRET = tokensList.get(1);
+		// re-authenticate with dropbox key and secret
 		AccessTokenPair reAuthTokens = new AccessTokenPair(AUTH_KEY,AUTH_SECRET);
 		api.getSession().setAccessTokenPair(reAuthTokens);
 		logger.info("Re-authentication Sucessful");
@@ -121,12 +103,11 @@ public class WorkAreaDropBox implements WorkArea{
 		}
 	}
 
-
 	/**
 	*A first authentication to dropbox to get dropbox key and secret and create TOKENS file to store them in
 	*/
+	
 	private void firstAuthenticate(){
-		File tokensFile = new File("TOKENS");
 		AccessTokenPair tokenPair = api.getSession().getAccessTokenPair();
 		RequestTokenPair tokens = new RequestTokenPair(tokenPair.key, tokenPair.secret);
 		try {
@@ -137,19 +118,13 @@ public class WorkAreaDropBox implements WorkArea{
 			logger.error(errorMsg,e);
 			throw new RuntimeException(errorMsg,e);
 		}
-		// Write tokens to file
-		try {
-			PrintWriter tokenWriter = new PrintWriter(tokensFile);
-			tokenWriter.println(api.getSession().getAccessTokenPair().key);
-			tokenWriter.println(api.getSession().getAccessTokenPair().secret);
-			tokenWriter.close();
-		} catch (Exception e) {
-			String errorMsg = "Something went wrong while writing tokens to file.";
-			logger.error(errorMsg,e);
-			throw new RuntimeException(errorMsg,e);
-		}
-
+		List<String> tokensList = new LinkedList<String>();
+		tokensList.add(api.getSession().getAccessTokenPair().key);
+		tokensList.add(api.getSession().getAccessTokenPair().secret);
+		// Save token
+		this.tokenStore.write(this.userName, tokensList);
 	}
+
 
 	/**
 	*If TOKENS file exist with dropbox key and secret then reauthenticate 
@@ -157,8 +132,8 @@ public class WorkAreaDropBox implements WorkArea{
 	*/
 	private void authenticate(){
 		//check if already authenticated
-		File tokensFile = new File("TOKENS"); 
-		if (tokensFile.exists()) {
+		List<String> tokensFile = tokenStore.read(this.userName); 
+		if (tokensFile != null && !tokensFile.isEmpty()) {
 			// tokensFile does already exist
 			logger.info("TokensFile seems to exist. Attempting reauthentication");
 			reAuthenticate();
@@ -175,12 +150,12 @@ public class WorkAreaDropBox implements WorkArea{
 	*@param folderName The name of the folder which to upload the files to
 	*@param pathList List of paths to the files in repository
 	*/
-	public void uploadFile(String folderName, List<String> pathList){
+	public void uploadFile(String folderName,  List<CmsItemId> cmsItems){
 		//Authenticate to dropbox a account
 		authenticate();
-		for(String path : pathList){
+		for(CmsItemId cmsId : cmsItems){
 			try{
-				File source = new File(path);
+				File source = new File(tempRepository + cmsId.getRelPath().getPath());
 				FileInputStream fis = new FileInputStream(source);
 				ByteArrayOutputStream bos = new ByteArrayOutputStream();
 				byte [] buf = new byte[1024];
@@ -190,32 +165,25 @@ public class WorkAreaDropBox implements WorkArea{
 				fis.close();
 				ByteArrayInputStream inputStream2 = new ByteArrayInputStream(bos.toByteArray());
 				//Upload file to dropbox folder: folderName, if folderName don't exist it is created
-				api.putFile(folderName+ "/" +source.getName(), inputStream2,bos.size(), null, null);
+				String dropboxPath = folderName + "/" + source.getName();
+				
+				cmsCommit.lock(dropboxPath, cmsId.getRelPath());
+				
+				api.putFile(dropboxPath, inputStream2,bos.size(), null, null);
 				long lDateTime = new Date().getTime();
 				source.setLastModified(lDateTime);
-	
-				File reposFolder = new File(tempRepository);
-				if(reposFolder.exists() && reposFolder.isDirectory()){
-					File lockFile = new File(reposFolder,source.getName() +".lock");
-					try{
-						lockFile.createNewFile();
-						if(lockFile.exists()){
-							String content = folderName+"/"+source.getName();
-							FileWriter fw = new FileWriter(lockFile.getAbsoluteFile());
-							BufferedWriter bw = new BufferedWriter(fw);
-							bw.write(content);
-							bw.close();
-						}
-					}catch (IOException e) {
-						String errorMsg = "Something went wrong while writing to lock file";
-						logger.error(errorMsg,e);
-						throw new RuntimeException(errorMsg,e);
-					}
-				}
-            }catch (Exception e) {
-            	String errorMsg = "Something went wrong while uploading file to dropbox. " + dropboxAccept;
+			}catch(IOException e){
+				String errorMsg =  "Problem while closing inputstream " +e;
 				logger.error(errorMsg,e);
 				throw new RuntimeException(errorMsg,e);
+			}catch(DropboxException de){
+				String errorMsg = "Something went wrong while trying to upload to dropbox. " + dropboxAccept;
+	    		logger.error(errorMsg,de);
+	    		throw new RuntimeException(errorMsg,de);
+			}catch(CmsItemLockedException cms){
+				String errorMsg = "Item is locked " + cms;
+	    		logger.error(errorMsg,cms);
+	    		throw new RuntimeException(errorMsg,cms);
 			}
 		}
 	}
@@ -226,15 +194,8 @@ public class WorkAreaDropBox implements WorkArea{
 	*@return List A list of the files in repository
 	*/
 	public List<String> getFileList(){
-		File localDirectory = new File(tempRepository);
-		String[] fileList = localDirectory.list();
-		List<String> repositoryFiles = new LinkedList<String>();
-		for(String file : Arrays.asList(fileList)){
-			int index = file.lastIndexOf('.');
-			if(index >= 0 && !file.substring(index+1).equals("lock"))
-				repositoryFiles.add(file);
-		}
-		return repositoryFiles;
+		CmsRepositoryId cmsId = new CmsRepositoryId(repo);
+		return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(cmsId));
 	}
 
 
@@ -264,7 +225,7 @@ public class WorkAreaDropBox implements WorkArea{
             			Date dropboxDate = new Date(e.modified);
             			//If last modified for drobox file is later than for file in repository, add to return list
             			if(dropboxDate.after(localDate)){
-							fileUpdated.add(e.path);
+							fileUpdated.add(e.path.substring(e.path.lastIndexOf("/")));
             			}
             		}
         		}
@@ -282,33 +243,30 @@ public class WorkAreaDropBox implements WorkArea{
 	 * 
 	 * @param files list of file paths to files which to commit
 	 */
-	public void commitFiles(List<String> files){
+	public void commitFiles(List<CmsItemId> cmsItems){
 		//Authenticate to dropbox a account
 		authenticate();
         FileOutputStream outputStream = null;
-        for(String s : files){
+        for(CmsItemId cmsId : cmsItems){
         	try{
-        		String fileN = s.substring(s.lastIndexOf("/") + 1);
+        		String fileN = cmsId.getRelPath().getPath();
         		File reposFolder = new File(tempRepository);
         		File lockFile = new File(reposFolder,fileN + ".lock");
         		String dropboxPath = "";
         		if(lockFile.exists()){
-        			FileInputStream in = new FileInputStream(lockFile);
-        			BufferedReader br = new BufferedReader(new InputStreamReader(in));
-        			dropboxPath = br.readLine();
-        			br.close();
-        			lockFile.delete();
-        		}
+        			dropboxPath = workareaOperations.readLockFile(lockFile);
+					cmsCommit.unlock(new CmsItemPath(fileN),new CmsItemLockFile(tempRepository,new Date(),dropboxPath));
+				}
 			
         		//File in repository which to store change in, is set to a local temp folder (tmp/repos-test/)
-        		File file = new File(tempRepository + s.substring(s.lastIndexOf("/") + 1));
+        		File file = new File(tempRepository + fileN);
         		outputStream = new FileOutputStream(file);
         		//Get file from dropbox 
         		DropboxFileInfo info = api.getFile(dropboxPath, null, outputStream, null);
         		//Get entry for this dropbox file   
         		Entry fileMetadata = info.getMetadata();
         		//Delete file from dropbox     	
-        		api.delete(s);
+        		api.delete(dropboxPath);
         		//Get entry for files parent folder
         		Entry parentFolder = api.metadata(fileMetadata.parentPath(),0,null,true,null);
         		//Checks if parent folder is empty, and delete folder if it is
@@ -322,10 +280,6 @@ public class WorkAreaDropBox implements WorkArea{
         		String errorMsg = "File not found";
         		logger.error(errorMsg,fe);
         		throw new RuntimeException(errorMsg,fe);
-        	}catch (IOException e) {
-        		String errorMsg = "Problem reading .lock file";
-        		logger.error(errorMsg,e);
-        		throw new RuntimeException(errorMsg,e);
         	}finally {
         		if(outputStream != null) {
         			try {
@@ -339,9 +293,9 @@ public class WorkAreaDropBox implements WorkArea{
         	}
 		}
 	}
-	
-	
-	public void initializeDropbox(){
+		
+	public void initializeDropbox(DropboxTokenStore tokenStore){
+		this.tokenStore = tokenStore;
 		// Initialize the session
 		this.appKeys = new AppKeyPair(KEY, SECRET);
 		WebAuthSession session = new WebAuthSession(appKeys, ACCESS_TYPE);
@@ -354,13 +308,8 @@ public class WorkAreaDropBox implements WorkArea{
 			logger.info(errorMsg,e);
 			throw new RuntimeException(errorMsg,e);
 		}		
-		File tokens = new File("TOKENS");
-		if(tokens.exists()){
-			tokens.delete();
-		}
 	}
-	
-	
+
 	public String getAcceptUrl(){
 		return acceptUrl;
 	}
