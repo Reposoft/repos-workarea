@@ -13,114 +13,119 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.Ignore;
+import org.junit.Before;
 import org.junit.Test;
 
 import se.repos.workarea.local.WorkAreaLocal;
+import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsItemPath;
+import se.simonsoft.cms.item.CmsRepository;
+import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 
 public class TestWorkAreaLocal {
 	
-	private WorkAreaLocal workarea = new WorkAreaLocal(); // TODO unit tests should mock CmsItemLookup and commit service, integation tests for file system could use real impls
-	private String localRepository = workarea.getLocalRepository();
-	private String localFolder     = workarea.getLocalFolder();
+	private WorkAreaLocal workarea = new WorkAreaLocal();
+	private String localRepositoryPath = workarea.getLocalRepository();
+	private String localFolderPath     = workarea.getLocalFolder();
+	private CmsRepository repo = new CmsRepository("http://localhost/svn/testrepo");
 	private List<String> filesToCommit;
 	private String testUploadFolderName = "TEST-LOCAL-FOLDER";
+	
+	private File localRepository;
+	private File localFolder;
+	
+	
+	@Before
+	public void setUp(){
+		this.localRepository = new File(this.localRepositoryPath);
+		this.localFolder = new File(this.localFolderPath);
+		this.localRepository.mkdirs();
+		this.localFolder.mkdirs();
+		
+		buildTestFiles(localRepository);
+	}
+	
 	
 	@Test
 	public void testUploadFile(){
 		
-		File repositoryFolder = new File(localRepository);
-		if(!repositoryFolder.exists())
-			repositoryFolder.mkdirs();
-
-		if(repositoryFolder.isDirectory() && repositoryFolder.list().length == 0){
-			for(int i = 0 ; i <= 2 ; i++){
-				File testFile = new File(repositoryFolder,"Test"+i+".txt");
-				try {
-					testFile.createNewFile();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		File localFolderFile = new File(localFolder);
-		if(!localFolderFile.exists()){
-			localFolderFile.mkdirs();
-		}
-		
-		
-		
-		assertTrue(repositoryFolder.exists() && repositoryFolder.isDirectory());
-		
-		File[] repositoryFiles = repositoryFolder.listFiles();
-		List<String> listOfFiles = new LinkedList<String>();
+		File[] repositoryFiles = localRepository.listFiles();
+		List<CmsItemId> listOfFiles = new LinkedList<CmsItemId>();
 		if(repositoryFiles.length > 0){
 			for(int i = 0 ; i < repositoryFiles.length ; i++){
-					listOfFiles.add(localRepository + repositoryFiles[i].getName());
+				CmsItemPath cmsPath = new CmsItemPath("/"+repositoryFiles[i].getName());
+				CmsItemIdUrl cmsUrl = new CmsItemIdUrl(repo,cmsPath);
+				listOfFiles.add(cmsUrl);
 			}
 		workarea.uploadFile(testUploadFolderName, listOfFiles);
-		File testUploadFolder = new File(localFolder + testUploadFolderName);
+		File testUploadFolder = new File(this.localFolder, testUploadFolderName);
 		
 		assertTrue(testUploadFolder.exists());
-		
-		assertTrue(testUploadFolder.listFiles().length == listOfFiles.size());
-		}
-			
+		assertEquals(testUploadFolder.listFiles().length , listOfFiles.size());
+		}	
 	}
 	
 	@Test
 	public void testUpdatedFileCheck(){
-		File testUploadFolder = new File(workarea.getLocalFolder() + testUploadFolderName);
+		File testUploadFolder = new File(this.localFolder,testUploadFolderName);
 		
-		assertTrue(testUploadFolder.exists() && testUploadFolder.isDirectory());
+		if(!testUploadFolder.exists()){
+			testUploadFolder.mkdirs();
+			buildTestFiles(testUploadFolder);
+		}
 		
-		File[] listOfFiles = testUploadFolder.listFiles();
-		if(listOfFiles.length > 0){
-			for(File localFile : Arrays.asList(listOfFiles)){
-				localFile.setLastModified(System.currentTimeMillis() + 1000000000);
-			}
-			filesToCommit = workarea.updatedFileCheck();
-			
-			assertTrue(filesToCommit.size() == listOfFiles.length);
-		}	
+		changeModified(testUploadFolder);
+		filesToCommit = workarea.updatedFileCheck();	
+		assertTrue(filesToCommit.size() == testUploadFolder.list().length);	
 	}
 
 
 	@Test
 	public void testCommitFiles(){
-		File testUploadFolder = new File(workarea.getLocalFolder() + testUploadFolderName);	
-		filesToCommit = workarea.updatedFileCheck();
-		
+		File testUploadFolder = new File(this.localFolder, testUploadFolderName);
+		if(!testUploadFolder.exists()){
+			testUploadFolder.mkdirs();
+			buildTestFiles(testUploadFolder);
+			changeModified(testUploadFolder);
+		}
 		assertTrue(testUploadFolder.exists());
-		
-		workarea.commitFiles(filesToCommit);
+		changeModified(testUploadFolder);
+			
+		filesToCommit = workarea.updatedFileCheck();
+		assertTrue(filesToCommit.size() > 0);
 
+
+		List<CmsItemId> items = new LinkedList<CmsItemId>();
 		
+		for(String s : filesToCommit){
+			CmsItemPath cmsPath = new CmsItemPath(s);
+			CmsItemIdUrl cmsUrl = new CmsItemIdUrl(repo,cmsPath);
+			items.add(cmsUrl);
+		}
+		
+		workarea.commitFiles(items);
 		assertTrue(!testUploadFolder.exists());
 	}
 	
-	@Test
-	public void testDestinationFolderMissing() {
-		// TODO there is no error message in webapp if the work area target folder does not exist. Send just appears to work.
-		//log says
-		//07:15:39.421 [qtp1713279871-19] INFO  s.repos.workarea.local.WorkAreaLocal - Something went wrong while copying file
-		//07:15:39.421 [qtp1713279871-19] INFO  s.repos.workarea.local.WorkAreaLocal - Can't find local folder: tmp/testLocalfolder/
-		
+	
+	private void buildTestFiles(File folder){
+		for(int i = 0 ; i <= 2 ; i++){
+			File testFile = new File(folder,"Test"+i+".txt");
+			try {
+				testFile.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
-	@Test
-	public void testSelectedFilesAlreadyLocked() {
-		// TODO there is no check that file being sent to work area isn't already locked
-		// Ideally this should be reported when listing "repository" files
-		
+	private void changeModified(File folder){
+		File[] listOfFiles = folder.listFiles();
+		if(listOfFiles.length > 0){
+			for(File localFile : Arrays.asList(listOfFiles)){
+				localFile.setLastModified(System.currentTimeMillis() + 1000000000 + 10000000);
+			}
+		}
 	}
-	
-	@Test
-	public void testCommitFilesSomeUnchanged() {
-		// TODO if each folder is a work unit I think all changes should be committed at once and unchanged files should be unlocked in repository
-		// then after commit the entire work area should be deleted
-		// THis might need some clarifications in the UI
-		
-	}
-	
+
 }
