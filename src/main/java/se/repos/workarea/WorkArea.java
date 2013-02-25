@@ -5,13 +5,15 @@ package se.repos.workarea;
 
 import java.util.*;
 
+import se.simonsoft.cms.item.CmsItemId;
+
 public interface WorkArea{
 
-	void uploadFile(String folderName, List<String> pathList);
+	void uploadFile(String folderName, List<CmsItemId> items);
 	
-	List getFileList();
+	List<String> getFileList();
 
 	List<String> updatedFileCheck();
 
-	void commitFiles(List<String> files);
+	void commitFiles(List<CmsItemId> items);
 }
