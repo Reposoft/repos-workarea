@@ -3,40 +3,28 @@
  */
 package se.repos.workarea;
 
-import javax.inject.Inject;
 
+import javax.inject.Inject;
+import se.repos.workarea.dropbox.*;
+import se.repos.workarea.local.*;
 import se.repos.authproxy.ReposCurrentUser;
-import se.repos.workarea.dropbox.WorkAreaDropBox;
-import se.simonsoft.cms.item.commit.CmsCommit;
-import se.simonsoft.cms.item.info.CmsItemLookup;
 
 public class WorkAreaConfigurationPerUserImpl implements WorkAreaConfiguration {
 
 	private ReposCurrentUser reposCurrentUser;
-	private CmsItemLookup lookup;
-	private CmsCommit commit;
+	private WorkArea workareaCurrent;
 	
 	@Inject public void setReposCurrentUser(ReposCurrentUser reposCurrentUser) {
 		this.reposCurrentUser = reposCurrentUser;
-	}
+		this.workareaCurrent = new WorkAreaDropBox(reposCurrentUser.getUsername());
+		//this.workareaCurrent = new WorkAreaLocal();
+	}	
 	
-	@Inject public void setCmsItemLookup(CmsItemLookup lookup) {
-		this.lookup = lookup;
-	}
-
-	@Inject public void setCmsCommit(CmsCommit commit) {
-		this.commit = commit;
-	}
 	
 	@Override
 	public WorkArea getWorkArea() {
-		String username = reposCurrentUser.getUsername();
-		// types are svn, svn-wc or filesystem, currently we use filesystem when evaluating this module
-		CmsItemLookup lookupPerRepositoryType = lookup;
-		CmsCommit commitPerRepositoryType = commit;
-		// configuration per user not in scope for first iteration
-		WorkArea workareaCurrent = new WorkAreaDropBox(lookup, commit);
 		return workareaCurrent;
 	}
+
 
 }
