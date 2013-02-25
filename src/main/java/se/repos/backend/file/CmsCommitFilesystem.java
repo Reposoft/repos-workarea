@@ -3,9 +3,11 @@
  */
 package se.repos.backend.file;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
@@ -48,16 +50,31 @@ public class CmsCommitFilesystem implements CmsCommit {
 	}	
 	
 	@Override
-	public CmsItemLock lock(String arg0, CmsItemPath arg1)
+	public CmsItemLock lock(String message, CmsItemPath pathItem)
 			throws CmsItemLockedException {
-		// TODO Auto-generated method stub
-		return null;
+		File lockFile = new File(root,pathItem.getPath() +".lock");
+		if(lockFile.exists()){
+			throw new CmsItemLockedException(repository,pathItem);
+		}
+		try {
+			FileWriter fw = new FileWriter(lockFile);
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(message);
+			bw.close();
+		} catch (IOException e) {
+			String errorMsg = "Someting went wrong while writing to lock file";
+			logger.error(errorMsg,e);
+			throw new RuntimeException(errorMsg,e);
+		}
+		return new CmsItemLockFile(repository.getHost(), new Date(),message);
 	}
 
 	@Override
-	public void unlock(CmsItemPath arg0, CmsItemLock arg1) {
-		// TODO Auto-generated method stub
-		
+	public void unlock(CmsItemPath pathItem, CmsItemLock lockItem) {
+		File lockFile = new File(root,pathItem.getPath()+".lock");
+		if(lockFile.exists()){
+			lockFile.delete();
+		}
 	}	
 	
 	@Override
