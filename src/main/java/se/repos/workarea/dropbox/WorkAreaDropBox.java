@@ -25,7 +25,6 @@ import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.commit.CmsItemLockedException;
-import se.simonsoft.cms.item.impl.CmsRepositoryId;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -194,8 +193,8 @@ public class WorkAreaDropBox implements WorkArea{
 	*@return List A list of the files in repository
 	*/
 	public List<String> getFileList(){
-		CmsRepositoryId cmsId = new CmsRepositoryId(repo);
-		return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(cmsId));
+		CmsItemId folder = repo.getItemId();
+		return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(folder));
 	}
 
 

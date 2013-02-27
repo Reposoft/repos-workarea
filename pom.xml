@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>se.simonsoft</groupId>
 			<artifactId>cms-item</artifactId>
-			<version>2.1-20130214.200139-5</version>
+			<version>2.1-20130220.040142-6</version>
 		</dependency>
 		<dependency>
 		    <groupId>se.repos</groupId>
@@ -60,7 +60,12 @@
 			<groupId>org.syncloud</groupId>
 			<artifactId>dropbox-client</artifactId>
 			<version>1.5.3</version>
-		</dependency>	
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.4</version>
+		</dependency>
 		<!-- JAX-RS impl needed in classpath to be able to unit test REST methods -->
 		<dependency>
 			<groupId>org.apache.wink</groupId>

@@ -16,7 +16,6 @@ import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.commit.CmsCommit;
 import se.simonsoft.cms.item.commit.CmsItemLockedException;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
-import se.simonsoft.cms.item.impl.CmsRepositoryId;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 import se.simonsoft.cms.item.info.CmsLockQuery;
 
@@ -61,7 +60,7 @@ public class LockingFilesystemTest {
 		}
 		
 		// now lookup should not list the lock file
-		Set<CmsItem> list = lookup.getImmediates(new CmsRepositoryId(repo));
+		Set<CmsItem> list = lookup.getImmediates(repo.getItemId());
 		assertEquals("should not list the lock file as a regular file", 1, list.size());
 		
 		CmsItem fileItem = list.iterator().next();

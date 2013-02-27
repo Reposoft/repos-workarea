@@ -18,7 +18,6 @@ import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
-import se.simonsoft.cms.item.impl.CmsRepositoryId;
 import se.simonsoft.cms.item.info.CmsConnectionException;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 import se.simonsoft.cms.item.info.CmsItemNotFoundException;
@@ -61,7 +60,7 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 	public Set<CmsItem> getImmediates(CmsItemId parent)
 			throws CmsConnectionException, CmsItemNotFoundException {
 		Set<CmsItem> cmsSet = null;
-		if(parent instanceof CmsRepositoryId){
+		if(parent.getRelPath() == null){ // repo root
 			cmsSet = new HashSet<CmsItem>();
 			for(File reposFile : Arrays.asList(rootFile.listFiles())){
 				String filename = reposFile.getName();
@@ -108,7 +107,7 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 
 	@Override
 	public Iterable<CmsItemId> getDescendants(CmsItemId parent) {
-		if(parent instanceof CmsRepositoryId){
+		if(parent.getRelPath() == null){ // repo root
 			Set<CmsItemId> cmsSet = new HashSet<CmsItemId>();
 			for(File reposFile : Arrays.asList(rootFile.listFiles())){
 				cmsSet.add(new CmsItemIdUrl(parent.getRepository(),
@@ -210,7 +209,7 @@ public class CmsItemLookupFilesystem implements CmsItemLookup {
 	private Set<CmsItemId> getCmsItemIdSet(CmsItemId parent, boolean folders)
 			throws CmsConnectionException, CmsItemNotFoundException {
 		Set<CmsItemId> cmsSet = null;
-		if(parent instanceof CmsRepositoryId){
+		if(parent.getRelPath() == null){ // repo root
 			cmsSet = new HashSet<CmsItemId>();
 			for(File reposFile : Arrays.asList(rootFile.listFiles())){
 				String filename = reposFile.getName();

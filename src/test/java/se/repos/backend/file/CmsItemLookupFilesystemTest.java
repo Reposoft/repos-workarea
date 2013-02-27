@@ -23,7 +23,6 @@ import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
-import se.simonsoft.cms.item.impl.CmsRepositoryId;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 import se.simonsoft.cms.item.info.CmsItemNotFoundException;
 
@@ -77,8 +76,7 @@ public class CmsItemLookupFilesystemTest {
 		folder.mkdir();
 		assertEquals("Should find 0 items in empty folder",Collections.emptySet(),lookup.getImmediates(folderId));
 		
-		CmsItemId cmsroot = new CmsRepositoryId(repo);
-		Set<CmsItem> list = lookup.getImmediates(cmsroot);
+		Set<CmsItem> list = lookup.getImmediates(repo.getItemId());
 		assertEquals("should find two items under root", 2, list.size());
 
 		Iterator<CmsItem> it = list.iterator();
