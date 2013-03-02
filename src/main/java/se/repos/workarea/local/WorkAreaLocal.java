@@ -25,6 +25,7 @@ import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.commit.CmsCommitChangeset;
 import se.simonsoft.cms.item.commit.CmsItemLockedException;
 import se.simonsoft.cms.item.commit.FileModification;
+import se.simonsoft.cms.item.impl.CmsRepositoryId;
 
 
 public class WorkAreaLocal implements WorkArea {
@@ -62,8 +63,28 @@ public class WorkAreaLocal implements WorkArea {
 		public void uploadFile(String folderName, List<CmsItemId> cmsItems){
 			CmsCommitChangeset changeSet = new CmsCommitChangeset();
 			File folder = new File(localFolder+folderName);
+			List<CmsItemId> lockItems = new LinkedList<CmsItemId>();
 			if(!folder.exists())
 				folder.mkdir();
+			
+			for(CmsItemId cmsId : cmsItems){
+				String path = cmsId.getRelPath().getName();
+				if(path.startsWith("/")){
+					path = path.substring(1,path.length());
+				}
+				File source = new File(this.tempRepository + path);
+				String sourceName = source.getName();
+				String localPath = folderName + "/" + sourceName;
+				try{
+					cmsCommitRepo.lock(localFolder+localPath, cmsId.getRelPath());
+					lockItems.add(cmsId);
+				}catch(CmsItemLockedException cms){
+					unlock(lockItems);
+					String errorMsg = cms.getMessage();
+		    		logger.error(errorMsg,cms);
+		    		throw new RuntimeException(errorMsg,cms);
+				}
+			}
 			
 			for(CmsItemId cmsId : cmsItems){
 				try {
@@ -78,29 +99,27 @@ public class WorkAreaLocal implements WorkArea {
 					Date fileLastModified = new Date(target.lastModified());
 					RepoRevision rev = new RepoRevision(-1, fileLastModified);
 					String localPath = folderName + "/" + sourceName;
-					
-					cmsCommitRepo.lock(localFolder+localPath, cmsId.getRelPath());	
-					
 					changeSet.add(new FileModification(new CmsItemPath("/"+localPath),rev,null,new FileInputStream(source)));
 
 					long lDateTime = new Date().getTime();
 					source.setLastModified(lDateTime);							
 				} catch (FileNotFoundException e) {
+					unlock(cmsItems);
 					String errorMsg =  "Could not find file: " +e;
 					logger.error(errorMsg,e);
 					throw new RuntimeException(errorMsg,e);
-				}catch (IOException IOe) {
-					String errorMsg =  "Problem while creating file " +IOe;
-					logger.error(errorMsg,IOe);
-					throw new RuntimeException(errorMsg,IOe);
-				}catch(CmsItemLockedException cms){
-					String errorMsg = "Item is locked " + cms;
-		    		logger.error(errorMsg,cms);
-		    		throw new RuntimeException(errorMsg,cms);
+				}catch(IOException e){
+					String errorMsg =  "Problem while creating file " +e;
+					logger.error(errorMsg,e);
+					throw new RuntimeException(errorMsg,e);						
 				}		
-			}	
+			}
+				
 			cmsCommitLocal.run(changeSet);
+	
     	}
+		
+		
 		
 
 		/**
@@ -109,8 +128,8 @@ public class WorkAreaLocal implements WorkArea {
 		*@return List Names of files in repository
 		*/
 		public List<String> getFileList(){
-			CmsItemId folder = repo.getItemId();
-			return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(folder));
+			CmsRepositoryId cmsId = new CmsRepositoryId(repo);
+			return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(cmsId));
 		}
 
 		/**
@@ -181,6 +200,12 @@ public class WorkAreaLocal implements WorkArea {
 				}
 			}
 			cmsCommitRepo.run(changeSet);
+		}
+		
+		private void unlock(List<CmsItemId> cmsItems){
+			for(CmsItemId cmsId : cmsItems){
+				cmsCommitRepo.unlock(cmsId.getRelPath(), new CmsItemLockFile(tempRepository,new Date(),cmsId.getRelPath().getPath()));
+			}
 		}
 		
 		public String getLocalFolder(){
