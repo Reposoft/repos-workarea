@@ -18,6 +18,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
@@ -44,6 +45,8 @@ public class WorkAreaResource {
 	// out of scope for first iteration //@Inject private Map<CmsRepository, CmsCommit> itemCommit;
 	
 	private DropboxTokenStore tokenStore;
+	
+	private boolean success;
 	
 	
 
@@ -88,10 +91,12 @@ public class WorkAreaResource {
 	 * List<CmsItemPath>
 	 */
 	@POST
+	@Produces("text/HTML")
 	@Path("{repo}/checkout")
 	public Response checkout(
 			@PathParam("repo") String repositoryId,
 			@QueryParam("target") List<String> targets) {
+		String answer = "Upload success";
 		CmsRepository repo = getRepository(repositoryId);
 		//Files to be sent to workarea
 		List<CmsItemId> items = new LinkedList<CmsItemId>();
@@ -102,10 +107,15 @@ public class WorkAreaResource {
 			CmsItemIdUrl cmsUrl = new CmsItemIdUrl(repo,cmsPath);
 			items.add(cmsUrl);
 		}
-		if(!items.isEmpty())
-			workAreaConfiguration.getWorkArea().uploadFile(repositoryId,items);
+		if(!items.isEmpty()){
+			try{
+				workAreaConfiguration.getWorkArea().uploadFile(repositoryId,items);
+			}catch(RuntimeException e){
+				answer = e.getLocalizedMessage();
+			}
+		}
+		
 
-		String answer = "<h1>" + repositoryId + "</h1>";
 		return Response.ok(answer).build();
 	}
 
@@ -193,7 +203,11 @@ public class WorkAreaResource {
 			WorkArea workArea = workAreaConfiguration.getWorkArea();
 			List<String> fileList = workArea.getFileList(); 
 			List<String> updated = workArea.updatedFileCheck();
-			String files = "<h1 id=div1>Files in repository</h1>\n";
+			String files = "";
+			if(success){
+				files +=  "<HEAD><script language='Javascript'>alert ('Upload succeded')</script></HEAD>";
+			}
+			files += "<h1 id=div1>Files in repository</h1>\n";
 			files += "<select id='multipleSelect' size= "+fileList.size()  +"  multiple='multiple'>\n" ;
 			for(String s : fileList){	
 				files += "<option value =" + s + ">" + s + " </option> \n";  
