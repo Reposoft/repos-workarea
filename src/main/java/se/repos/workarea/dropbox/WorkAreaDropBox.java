@@ -25,6 +25,7 @@ import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.commit.CmsItemLockedException;
+import se.simonsoft.cms.item.impl.CmsRepositoryId;
 
 import com.dropbox.client2.exception.DropboxException; 
 import com.dropbox.client2.DropboxAPI;
@@ -152,6 +153,21 @@ public class WorkAreaDropBox implements WorkArea{
 	public void uploadFile(String folderName,  List<CmsItemId> cmsItems){
 		//Authenticate to dropbox a account
 		authenticate();
+		List<CmsItemId> lockFiles = new LinkedList<CmsItemId>();
+		for(CmsItemId cmsId : cmsItems){
+			File source = new File(tempRepository + cmsId.getRelPath().getPath());
+			String dropboxPath = folderName + "/" + source.getName();
+			
+			try{
+				cmsCommit.lock(dropboxPath, cmsId.getRelPath());
+				lockFiles.add(cmsId);
+			}catch(CmsItemLockedException cms){
+				unlock(lockFiles);
+				String errorMsg = cms.getMessage();
+	    		logger.error(errorMsg,cms);
+	    		throw new RuntimeException(errorMsg,cms);
+			}
+		}
 		for(CmsItemId cmsId : cmsItems){
 			try{
 				File source = new File(tempRepository + cmsId.getRelPath().getPath());
@@ -166,23 +182,19 @@ public class WorkAreaDropBox implements WorkArea{
 				//Upload file to dropbox folder: folderName, if folderName don't exist it is created
 				String dropboxPath = folderName + "/" + source.getName();
 				
-				cmsCommit.lock(dropboxPath, cmsId.getRelPath());
-				
 				api.putFile(dropboxPath, inputStream2,bos.size(), null, null);
 				long lDateTime = new Date().getTime();
 				source.setLastModified(lDateTime);
 			}catch(IOException e){
+				unlock(cmsItems);
 				String errorMsg =  "Problem while closing inputstream " +e;
 				logger.error(errorMsg,e);
 				throw new RuntimeException(errorMsg,e);
 			}catch(DropboxException de){
+				unlock(cmsItems);
 				String errorMsg = "Something went wrong while trying to upload to dropbox. " + dropboxAccept;
 	    		logger.error(errorMsg,de);
 	    		throw new RuntimeException(errorMsg,de);
-			}catch(CmsItemLockedException cms){
-				String errorMsg = "Item is locked " + cms;
-	    		logger.error(errorMsg,cms);
-	    		throw new RuntimeException(errorMsg,cms);
 			}
 		}
 	}
@@ -193,8 +205,8 @@ public class WorkAreaDropBox implements WorkArea{
 	*@return List A list of the files in repository
 	*/
 	public List<String> getFileList(){
-		CmsItemId folder = repo.getItemId();
-		return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(folder));
+		CmsRepositoryId cmsId = new CmsRepositoryId(repo);
+		return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(cmsId));
 	}
 
 
@@ -307,6 +319,12 @@ public class WorkAreaDropBox implements WorkArea{
 			logger.info(errorMsg,e);
 			throw new RuntimeException(errorMsg,e);
 		}		
+	}
+	
+	private void unlock(List<CmsItemId> cmsItems){
+		for(CmsItemId cmsId : cmsItems){
+			cmsCommit.unlock(cmsId.getRelPath(), new CmsItemLockFile(tempRepository,new Date(),cmsId.getRelPath().getPath()));
+		}
 	}
 
 	public String getAcceptUrl(){
