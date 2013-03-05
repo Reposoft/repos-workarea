@@ -25,7 +25,6 @@ import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.commit.CmsCommitChangeset;
 import se.simonsoft.cms.item.commit.CmsItemLockedException;
 import se.simonsoft.cms.item.commit.FileModification;
-import se.simonsoft.cms.item.impl.CmsRepositoryId;
 
 
 public class WorkAreaLocal implements WorkArea {
@@ -128,8 +127,8 @@ public class WorkAreaLocal implements WorkArea {
 		*@return List Names of files in repository
 		*/
 		public List<String> getFileList(){
-			CmsRepositoryId cmsId = new CmsRepositoryId(repo);
-			return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(cmsId));
+			CmsItemId folder = repo.getItemId();
+			return this.workareaOperations.getRepositoryFileNames(cmsLookup.getImmediateFiles(folder));
 		}
 
 		/**
