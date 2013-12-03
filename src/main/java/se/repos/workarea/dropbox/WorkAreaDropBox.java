@@ -80,7 +80,6 @@ public class WorkAreaDropBox implements WorkArea{
 	/**
 	*Re-authentication to dropbox if TOKENS file exists
 	*/
-	
 	private void reAuthenticate(){
 		//read token key and secret with username
 		List<String> tokensList = tokenStore.read(this.userName);
@@ -105,7 +104,6 @@ public class WorkAreaDropBox implements WorkArea{
 	/**
 	*A first authentication to dropbox to get dropbox key and secret and create TOKENS file to store them in
 	*/
-	
 	private void firstAuthenticate(){
 		AccessTokenPair tokenPair = api.getSession().getAccessTokenPair();
 		RequestTokenPair tokens = new RequestTokenPair(tokenPair.key, tokenPair.secret);
