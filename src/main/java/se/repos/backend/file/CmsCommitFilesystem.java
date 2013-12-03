@@ -43,8 +43,7 @@ public class CmsCommitFilesystem implements CmsCommit {
 	/**
 	 * @param root corresponding to repository root in subversion
 	 */
-	@Inject
-	public CmsCommitFilesystem(CmsRepository repository, @Named("root") File repositoryRoot) {
+	public CmsCommitFilesystem(CmsRepository repository, File repositoryRoot) {
 		this.repository = repository;
 		this.root = repositoryRoot;
 	}	
