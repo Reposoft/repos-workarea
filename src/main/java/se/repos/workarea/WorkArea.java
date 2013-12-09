@@ -3,17 +3,46 @@
  */
 package se.repos.workarea;
 
-import java.util.*;
+import java.util.List;
 
 import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsItemPath;
 
-public interface WorkArea{
+public interface WorkArea {
+    // TODO Can folderName have a stronger type?
+    /**
+     * Uploads the provided CMS items to this work area in the folder given as
+     * the first argument.
+     * 
+     * @param items
+     *            The CMS items to upload to the work area.
+     * @param folderName
+     *            The folder in the work area to upload them to.
+     */
+    void uploadItems(String folderName, List<CmsItemId> items);
 
-	void uploadFile(String folderName, List<CmsItemId> items);
-	
-	List<String> getFileList();
+    /**
+     * Lists all the CMS items in this work area.
+     * 
+     * @return A {@link List} of all the {@link CmsItemPath} in the work area.
+     */
+    List<CmsItemPath> getItems();
 
-	List<String> updatedFileCheck();
+    /**
+     * Returns the CMS items that have been changed since being uploaded to the
+     * work area.
+     * 
+     * @return A {@link List} of all the {@link CmsItemPath} in the work area
+     *         that have changed.
+     */
+    List<CmsItemPath> getChangedItems();
 
-	void commitFiles(List<CmsItemId> items);
+    /**
+     * Removed the given CMS items from the work area and commits any changed
+     * back to the CMS.
+     * 
+     * @param items
+     *            The CMS items to commit.
+     */
+    void commitItems(List<CmsItemId> items);
 }
