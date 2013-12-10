@@ -5,7 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashSet;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -16,34 +16,47 @@ import se.simonsoft.cms.item.Checksum;
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemKind;
+import se.simonsoft.cms.item.CmsItemPath;
+import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.impl.ChecksumBase;
+import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.properties.CmsItemProperties;
 
 public class LocalCmsItem implements CmsItem {
-    private File file;
+    private CmsRepository repository;
+    private CmsItemPath path;
+    
+    public LocalCmsItem(CmsRepository repository, CmsItemPath path) {
+        this.repository = repository;
+        this.path = path;
+    }
+
+    private File getItemFile() {
+        String filePath = this.repository.getPath() + this.path.getPath();
+        return new File(filePath);
+    }
 
     @Override
     public CmsItemId getId() {
-        // TODO Auto-generated method stub
-        return null;
+        return new CmsItemIdUrl(this.repository, this.path);
     }
 
     @Override
     public RepoRevision getRevisionChanged() {
-        // TODO Auto-generated method stub
-        return null;
+        long lastModified = this.getItemFile().lastModified();
+        return new LocalRepoRevision(new Date(lastModified));
     }
 
     @Override
     public String getRevisionChangedAuthor() {
-        // TODO Auto-generated method stub
+        // TODO How to save the author?
         return null;
     }
 
     @Override
     public CmsItemKind getKind() {
-        if(this.file.isDirectory()) {
+        if (this.getItemFile().isDirectory()) {
             return CmsItemKind.Folder;
         }
         return CmsItemKind.File;
@@ -75,12 +88,16 @@ public class LocalCmsItem implements CmsItem {
     }
 
     private String calculateFileMD5() {
+        FileInputStream fis = null;
         try {
-            return DigestUtils.md5Hex(new FileInputStream(this.file));
+            fis = new FileInputStream(this.getItemFile());
+            return DigestUtils.md5Hex(fis);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e.getCause());
         } catch (IOException e) {
             throw new RuntimeException(e.getCause());
+        } finally {
+            IOUtils.closeQuietly(fis);
         }
     }
 
@@ -100,7 +117,7 @@ public class LocalCmsItem implements CmsItem {
 
             @Override
             public Set<String> getKeySet() {
-                return new HashSet<String>();
+                return null;
             }
 
             @Override
@@ -112,19 +129,21 @@ public class LocalCmsItem implements CmsItem {
 
     @Override
     public long getFilesize() {
-        return this.file.getTotalSpace();
+        return this.getItemFile().getTotalSpace();
     }
 
     @Override
-    public void getContents(OutputStream receiver) throws UnsupportedOperationException {
+    public void getContents(OutputStream receiver) {
+        FileInputStream fis = null;
         try {
-            FileInputStream fis = new FileInputStream(this.file);
+            fis = new FileInputStream(this.getItemFile());
             IOUtils.copy(fis, receiver);
-            IOUtils.closeQuietly(fis);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e.getCause());
         } catch (IOException e) {
             throw new RuntimeException(e.getCause());
+        } finally {
+            IOUtils.closeQuietly(fis);
         }
     }
 }

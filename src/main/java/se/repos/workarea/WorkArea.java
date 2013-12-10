@@ -9,7 +9,7 @@ import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemPath;
 
 public interface WorkArea {
-    // TODO Can folderName have a stronger type?
+    
     /**
      * Uploads the provided CMS items to this work area in the folder given as
      * the first argument.
@@ -19,7 +19,7 @@ public interface WorkArea {
      * @param folderName
      *            The folder in the work area to upload them to.
      */
-    void uploadItems(String folderName, List<CmsItemId> items);
+    void uploadItems(CmsItemPath folder, List<CmsItemId> items);
 
     /**
      * Lists all the CMS items in this work area.

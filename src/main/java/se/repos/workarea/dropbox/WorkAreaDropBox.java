@@ -12,9 +12,9 @@ import se.simonsoft.cms.item.CmsItemPath;
 public class WorkAreaDropBox implements WorkArea {
 
     @Override
-    public void uploadItems(String folderName, List<CmsItemId> items) {
+    public void uploadItems(CmsItemPath folder, List<CmsItemId> items) {
         // TODO Auto-generated method stub
-
+        
     }
 
     @Override
@@ -32,6 +32,6 @@ public class WorkAreaDropBox implements WorkArea {
     @Override
     public void commitItems(List<CmsItemId> items) {
         // TODO Auto-generated method stub
-
+        
     }
 }
