@@ -9,9 +9,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import javax.inject.Inject;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 
+import se.repos.authproxy.ReposCurrentUser;
 import se.simonsoft.cms.item.Checksum;
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
@@ -24,15 +27,26 @@ import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.properties.CmsItemProperties;
 
 public class LocalCmsItem implements CmsItem {
-    private CmsRepository repository;
     private CmsItemPath path;
-    
-    public LocalCmsItem(CmsRepository repository, CmsItemPath path) {
+
+    private CmsRepository repository;
+    private ReposCurrentUser currentUser;
+
+    @Inject
+    public void setRepository(CmsRepository repository) {
         this.repository = repository;
+    }
+
+    @Inject
+    public void setReposCurrentUser(ReposCurrentUser currentUser) {
+        this.currentUser = currentUser;
+    }
+
+    public LocalCmsItem(CmsItemPath path) {
         this.path = path;
     }
 
-    private File getItemFile() {
+    public File getTrackedFile() {
         String filePath = this.repository.getPath() + this.path.getPath();
         return new File(filePath);
     }
@@ -44,19 +58,18 @@ public class LocalCmsItem implements CmsItem {
 
     @Override
     public RepoRevision getRevisionChanged() {
-        long lastModified = this.getItemFile().lastModified();
+        long lastModified = this.getTrackedFile().lastModified();
         return new LocalRepoRevision(new Date(lastModified));
     }
 
     @Override
     public String getRevisionChangedAuthor() {
-        // TODO How to save the author?
-        return null;
+        return this.currentUser.getUsername();
     }
 
     @Override
     public CmsItemKind getKind() {
-        if (this.getItemFile().isDirectory()) {
+        if (this.getTrackedFile().isDirectory()) {
             return CmsItemKind.Folder;
         }
         return CmsItemKind.File;
@@ -90,7 +103,7 @@ public class LocalCmsItem implements CmsItem {
     private String calculateFileMD5() {
         FileInputStream fis = null;
         try {
-            fis = new FileInputStream(this.getItemFile());
+            fis = new FileInputStream(this.getTrackedFile());
             return DigestUtils.md5Hex(fis);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e.getCause());
@@ -129,14 +142,14 @@ public class LocalCmsItem implements CmsItem {
 
     @Override
     public long getFilesize() {
-        return this.getItemFile().getTotalSpace();
+        return this.getTrackedFile().getTotalSpace();
     }
 
     @Override
     public void getContents(OutputStream receiver) {
         FileInputStream fis = null;
         try {
-            fis = new FileInputStream(this.getItemFile());
+            fis = new FileInputStream(this.getTrackedFile());
             IOUtils.copy(fis, receiver);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e.getCause());

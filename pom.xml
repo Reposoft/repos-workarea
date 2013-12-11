@@ -45,7 +45,6 @@
 			<groupId>se.simonsoft</groupId>
 			<artifactId>cms-backend-svnkit</artifactId>
 			<version>0.9.3-SNAPSHOT</version>
-			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.syncloud</groupId>
@@ -61,6 +60,11 @@
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 			<version>1.8</version>
+		</dependency>
+		<dependency>
+			<groupId>se.simonsoft</groupId>
+			<artifactId>cms-backend-filexml</artifactId>
+			<version>0.6</version>
 		</dependency>
 	</dependencies>
 
