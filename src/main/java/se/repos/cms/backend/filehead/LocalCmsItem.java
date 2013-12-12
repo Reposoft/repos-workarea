@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Date;
@@ -13,6 +14,7 @@ import java.util.Set;
 import javax.inject.Inject;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import se.repos.authproxy.ReposCurrentUser;
@@ -174,5 +176,24 @@ public class LocalCmsItem implements CmsItem {
         } finally {
             IOUtils.closeQuietly(fis);
         }
+    }
+
+    /**
+     * Overwrites the contents of the file with the data from the given input
+     * stream.
+     */
+    public void writeContents(InputStream data) {
+        try {
+            FileUtils.copyInputStreamToFile(data, this.getTrackedFile());
+        } catch (IOException e) {
+            throw new RuntimeException(e.getCause());
+        }
+    }
+
+    /**
+     * Deletes the file this CmsItem tracks.
+     */
+    public void delete() {
+        this.getTrackedFile().delete();
     }
 }
