@@ -112,8 +112,8 @@ public class LocalCmsItemLock implements CmsItemLock {
 
     @Override
     public String getToken() {
-        // TODO What is the lock token?
-        return null;
+        // The token is the lock file contents.
+        return getLockFileContents(this.repository, this.lockPath);
     }
 
     @Override
