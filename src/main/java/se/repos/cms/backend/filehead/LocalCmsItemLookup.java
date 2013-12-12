@@ -1,6 +1,5 @@
 package se.repos.cms.backend.filehead;
 
-import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -8,10 +7,10 @@ import javax.inject.Inject;
 
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
+import se.simonsoft.cms.item.CmsItemKind;
 import se.simonsoft.cms.item.CmsItemLock;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
-import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.info.CmsConnectionException;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 import se.simonsoft.cms.item.info.CmsItemNotFoundException;
@@ -33,7 +32,7 @@ public class LocalCmsItemLookup implements CmsItemLookup {
     private LocalCmsItem getLocalCmsItem(CmsItemId id) throws CmsItemNotFoundException {
         CmsItemPath itemPath = id.getRelPath();
         LocalCmsItem file = new LocalCmsItem(itemPath);
-        if (!file.getTrackedFile().exists()) {
+        if (!file.exists()) {
             throw new CmsItemNotFoundException(this.repository, itemPath);
         }
         return file;
@@ -68,29 +67,28 @@ public class LocalCmsItemLookup implements CmsItemLookup {
     }
 
     private Set<LocalCmsItem> getLocalImmediates(CmsItemId parent, ItemType itemType) {
-        return this.getLocalImmediates(this.getLocalCmsItem(parent), itemType);
+        return LocalCmsItemLookup.getLocalImmediates(this.getLocalCmsItem(parent),
+                itemType);
     }
 
-    private Set<LocalCmsItem> getLocalImmediates(LocalCmsItem parent, ItemType itemType) {
+    private static Set<LocalCmsItem> getLocalImmediates(LocalCmsItem parent,
+            ItemType itemType) {
         Set<LocalCmsItem> localImmediates = new HashSet<LocalCmsItem>();
-        CmsItemPath parentPath = parent.getId().getRelPath();
-        for (File child : parent.getTrackedFile().listFiles()) {
+        for (LocalCmsItem child : parent.getChildItems()) {
             boolean add = false;
             switch (itemType) {
             case BOTH:
                 add = true;
                 break;
             case FILE:
-                add = child.isFile();
+                add = child.getKind() == CmsItemKind.File;
                 break;
             case FOLDER:
-                add = child.isDirectory();
+                add = child.getKind() == CmsItemKind.Folder;
                 break;
             }
             if (add) {
-                CmsItemPath childPath = parentPath.append(child.getName());
-                localImmediates.add(this.getLocalCmsItem(new CmsItemIdUrl(
-                        this.repository, childPath)));
+                localImmediates.add(child);
             }
         }
         return localImmediates;
@@ -104,10 +102,12 @@ public class LocalCmsItemLookup implements CmsItemLookup {
     }
 
     private void getLocalDescendants(Set<CmsItemId> children, LocalCmsItem parent) {
-        for (LocalCmsItem child : this.getLocalImmediates(parent, ItemType.BOTH)) {
+        for (LocalCmsItem child : LocalCmsItemLookup.getLocalImmediates(parent,
+                ItemType.BOTH)) {
             children.add(child.getId());
         }
-        for (LocalCmsItem folder : this.getLocalImmediates(parent, ItemType.FOLDER)) {
+        for (LocalCmsItem folder : LocalCmsItemLookup.getLocalImmediates(parent,
+                ItemType.FOLDER)) {
             this.getLocalDescendants(children, folder);
         }
     }

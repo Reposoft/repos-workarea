@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -46,8 +47,22 @@ public class LocalCmsItem implements CmsItem {
         this.path = path;
     }
 
-    // TODO Make this private, create method to get child items.
-    public File getTrackedFile() {
+    public boolean exists() {
+        return this.getTrackedFile().exists();
+    }
+
+    public List<LocalCmsItem> getChildItems() {
+        ArrayList<LocalCmsItem> children = new ArrayList<LocalCmsItem>();
+        if (this.getKind() != CmsItemKind.Folder) {
+            return children;
+        }
+        for (File child : this.getTrackedFile().listFiles()) {
+            children.add(new LocalCmsItem(this.path.append(child.getName())));
+        }
+        return children;
+    }
+
+    private File getTrackedFile() {
         String filePath = this.repository.getPath() + this.path.getPath();
         return new File(filePath);
     }
