@@ -30,7 +30,7 @@ public class LocalCmsCommit implements CmsCommit {
             CmsItemPath... item) throws CmsItemLockedException {
         LocalCmsItemLockCollection locks = new LocalCmsItemLockCollection(this.repository);
         for (CmsItemPath toLock : item) {
-            locks.add(LocalCmsItemLock.getLocalLock(toLock, message));
+            locks.add(LocalCmsItemLock.createLocalLock(this.repository, toLock, message));
         }
         return locks;
     }

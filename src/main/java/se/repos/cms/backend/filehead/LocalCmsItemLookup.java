@@ -114,7 +114,6 @@ public class LocalCmsItemLookup implements CmsItemLookup {
 
     @Override
     public CmsItemLock getLocked(CmsItemId itemId) {
-        // TODO Auto-generated method stub
-        return null;
+        return LocalCmsItemLock.getLocalLock(this.repository, itemId.getRelPath());
     }
 }
