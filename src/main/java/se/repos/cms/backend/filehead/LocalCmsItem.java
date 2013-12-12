@@ -46,6 +46,7 @@ public class LocalCmsItem implements CmsItem {
         this.path = path;
     }
 
+    // TODO Make this private, create method to get child items.
     public File getTrackedFile() {
         String filePath = this.repository.getPath() + this.path.getPath();
         return new File(filePath);
