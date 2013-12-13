@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2004-2012 Repos Mjukvara AB
+ * Copyright (C) Repos Mjukvara AB
  */
 package se.repos.workarea.local;
 

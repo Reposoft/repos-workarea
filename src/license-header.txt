@@ -1,1 +1,1 @@
-Copyright (C) ${year} ${owner}
+Copyright (C) ${owner}
